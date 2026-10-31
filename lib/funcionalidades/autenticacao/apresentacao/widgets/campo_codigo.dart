@@ -82,7 +82,7 @@ class _CampoCodigoState extends State<CampoCodigo> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: destacada ? CoresApp.ambar : cores.outline,
+                      color: destacada ? CoresApp.primaria : cores.outline,
                       width: destacada ? 1.5 : 1,
                     ),
                   ),

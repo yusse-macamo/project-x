@@ -13,14 +13,22 @@ abstract final class TemaApp {
 
     final ColorScheme esquemaCores = ColorScheme(
       brightness: brilho,
-      primary: CoresApp.ambar,
-      onPrimary: CoresApp.textoClaro,
-      primaryContainer: ehClaro ? CoresApp.ambarClaro : CoresApp.ambarEscuro,
-      onPrimaryContainer: ehClaro ? CoresApp.textoClaro : CoresApp.ambarClaro,
-      secondary: ehClaro ? CoresApp.ambarEscuro : CoresApp.ambarClaro,
-      onSecondary: ehClaro ? CoresApp.superficieClaro : CoresApp.textoClaro,
-      secondaryContainer: ehClaro ? CoresApp.ambarClaro : CoresApp.ambarEscuro,
-      onSecondaryContainer: ehClaro ? CoresApp.textoClaro : CoresApp.ambarClaro,
+      primary: CoresApp.primaria,
+      onPrimary: CoresApp.onPrimaria,
+      primaryContainer: ehClaro
+          ? CoresApp.primariaClara
+          : CoresApp.primariaEscura,
+      onPrimaryContainer: ehClaro
+          ? CoresApp.primariaEscura
+          : CoresApp.primariaClara,
+      secondary: CoresApp.destaque,
+      onSecondary: CoresApp.onDestaque,
+      secondaryContainer: ehClaro
+          ? CoresApp.destaqueClara
+          : CoresApp.destaqueEscura,
+      onSecondaryContainer: ehClaro
+          ? CoresApp.destaqueEscura
+          : CoresApp.destaqueClara,
       error: CoresApp.erro,
       onError: CoresApp.superficieClaro,
       errorContainer: CoresApp.erroClaro,
@@ -63,7 +71,7 @@ abstract final class TemaApp {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: raioCampo,
-          borderSide: const BorderSide(color: CoresApp.ambar, width: 1.5),
+          borderSide: const BorderSide(color: CoresApp.primaria, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: raioCampo,
@@ -77,8 +85,8 @@ abstract final class TemaApp {
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size.fromHeight(52),
-          backgroundColor: CoresApp.ambar,
-          foregroundColor: CoresApp.textoClaro,
+          backgroundColor: CoresApp.primaria,
+          foregroundColor: CoresApp.onPrimaria,
           shape: RoundedRectangleBorder(borderRadius: raioCampo),
         ),
       ),

@@ -28,7 +28,7 @@ class IndicadorPasso extends StatelessWidget {
             value: passo / total,
             minHeight: 4,
             backgroundColor: cores.surfaceContainerHighest,
-            valueColor: const AlwaysStoppedAnimation<Color>(CoresApp.ambar),
+            valueColor: const AlwaysStoppedAnimation<Color>(CoresApp.primaria),
           ),
         ),
       ],

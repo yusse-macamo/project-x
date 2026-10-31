@@ -38,7 +38,7 @@ class CampoSelecao<T> extends StatelessWidget {
               return ListTile(
                 title: Text(_textoOpcao(opcao)),
                 trailing: selecionada
-                    ? const Icon(Icons.check, color: CoresApp.ambar)
+                    ? const Icon(Icons.check, color: CoresApp.primaria)
                     : null,
                 onTap: () => Navigator.of(context).pop(opcao),
               );

@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+String formatarMt(double valor) => '${valor.round()} MT';
+
 class FormatadorCapitalizacaoPalavras extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
