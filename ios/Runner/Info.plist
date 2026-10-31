@@ -66,5 +66,11 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>A câmara é usada para fotografar os documentos do seu cadastro de motoqueiro.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>A galeria é usada para escolher as fotografias dos documentos do seu cadastro de motoqueiro.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>A sua localização é usada para mostrar onde está no mapa, definir o ponto de recolha e calcular o preço da viagem.</string>
 </dict>
 </plist>

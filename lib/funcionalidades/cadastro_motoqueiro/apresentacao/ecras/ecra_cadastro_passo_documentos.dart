@@ -4,12 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/apresentacao/controladores/controlador_cadastro.dart';
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/apresentacao/widgets/indicador_passo.dart';
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/dados/selector_imagem.dart';
+import 'package:project_x/funcionalidades/cadastro_motoqueiro/dominio/excecao_selector_imagem.dart';
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/dominio/motoqueiro.dart';
 import 'package:project_x/nucleo/tema/cores_app.dart';
 import 'package:project_x/nucleo/tema/tema_app.dart';
 import 'package:project_x/partilhado/widgets/botao_principal.dart';
 
 enum _OrigemImagem { camara, galeria }
+
+enum _AcaoSemAcesso { alternativa, definicoes }
 
 class _InfoDocumento {
   const _InfoDocumento({
@@ -63,7 +66,9 @@ class _EcraCadastroPassoDocumentosState
   @override
   void initState() {
     super.initState();
-    final Motoqueiro? motoqueiro = ref.read(controladorCadastroProvider).motoqueiro;
+    final Motoqueiro? motoqueiro = ref
+        .read(controladorCadastroProvider)
+        .motoqueiro;
     _documentos = <TipoDocumento, Documento>{
       for (final TipoDocumento tipo in TipoDocumento.values)
         tipo: Documento(
@@ -101,14 +106,114 @@ class _EcraCadastroPassoDocumentosState
     if (origem == null || !mounted) {
       return;
     }
+    await _escolherImagem(tipo, origem);
+  }
+
+  Future<void> _escolherImagem(TipoDocumento tipo, _OrigemImagem origem) async {
     final SelectorImagem seletor = ref.read(selectorImagemProvider);
-    final String? caminho = origem == _OrigemImagem.camara
-        ? await seletor.tirarFotografia()
-        : await seletor.escolherDaGaleria();
+    final String? caminho;
+    try {
+      caminho = origem == _OrigemImagem.camara
+          ? await seletor.tirarFotografia()
+          : await seletor.escolherDaGaleria();
+    } on ExcecaoSelectorImagem catch (e) {
+      if (mounted) {
+        await _tratarFalhaImagem(tipo, e.motivo);
+      }
+      return;
+    }
     if (caminho == null || !mounted) {
       return;
     }
     await _enviarDocumento(tipo, caminho);
+  }
+
+  Future<void> _tratarFalhaImagem(
+    TipoDocumento tipo,
+    MotivoFalhaImagem motivo,
+  ) async {
+    switch (motivo) {
+      case MotivoFalhaImagem.semAcessoCamara:
+        await _mostrarSemAcesso(
+          tipo,
+          titulo: 'Sem acesso à câmara',
+          mensagem:
+              'Para fotografar o documento, permita o acesso à câmara nas '
+              'definições do telemóvel. Também pode escolher uma fotografia '
+              'da galeria.',
+          alternativa: _OrigemImagem.galeria,
+          rotuloAlternativa: 'Escolher da galeria',
+        );
+      case MotivoFalhaImagem.semAcessoGaleria:
+        await _mostrarSemAcesso(
+          tipo,
+          titulo: 'Sem acesso às fotografias',
+          mensagem:
+              'Para escolher uma fotografia, permita o acesso às fotografias '
+              'nas definições do telemóvel. Também pode tirar a fotografia '
+              'agora.',
+          alternativa: _OrigemImagem.camara,
+          rotuloAlternativa: 'Tirar fotografia',
+        );
+      case MotivoFalhaImagem.semCamara:
+        _mostrarAviso(
+          'Não encontrámos uma câmara neste telemóvel. '
+          'Escolha uma fotografia da galeria.',
+        );
+      case MotivoFalhaImagem.desconhecido:
+        _mostrarAviso('Não foi possível abrir a câmara. Tente de novo.');
+    }
+  }
+
+  Future<void> _mostrarSemAcesso(
+    TipoDocumento tipo, {
+    required String titulo,
+    required String mensagem,
+    required _OrigemImagem alternativa,
+    required String rotuloAlternativa,
+  }) async {
+    final _AcaoSemAcesso? acao = await showDialog<_AcaoSemAcesso>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(titulo),
+          content: Text(mensagem),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(_AcaoSemAcesso.alternativa),
+              child: Text(rotuloAlternativa),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(context).pop(_AcaoSemAcesso.definicoes),
+              child: const Text('Abrir definições'),
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted) {
+      return;
+    }
+    switch (acao) {
+      case _AcaoSemAcesso.alternativa:
+        await _escolherImagem(tipo, alternativa);
+      case _AcaoSemAcesso.definicoes:
+        await ref.read(selectorImagemProvider).abrirDefinicoesApp();
+      case null:
+        return;
+    }
+  }
+
+  void _mostrarAviso(String mensagem) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(mensagem)));
   }
 
   Future<void> _tentarNovamente(TipoDocumento tipo) async {

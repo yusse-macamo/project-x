@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:project_x/nucleo/configuracao/configuracao_supabase.dart';
 import 'package:project_x/nucleo/tema/tema_app.dart';
 import 'package:project_x/nucleo/tipo_aplicacao.dart';
 import 'package:project_x/rotas/rotas_app.dart';
@@ -13,6 +15,12 @@ Future<Widget> arrancarApp(TipoAplicacao tipo) async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+  if (ConfiguracaoSupabase.configurado) {
+    await Supabase.initialize(
+      url: ConfiguracaoSupabase.url,
+      publishableKey: ConfiguracaoSupabase.chavePublicavel,
+    );
+  }
   return ProviderScope(
     overrides: <Override>[tipoAplicacaoProvider.overrideWithValue(tipo)],
     child: const _App(),

@@ -225,19 +225,169 @@ arranque, e cria o `Utilizador` com o `TipoUtilizador` correspondente. O
 `tipoAplicacaoProvider` não é lido em `rotas_app.dart`. Agora dá para
 testar o fluxo de cadastro a sério: `flutter run -t lib/main_motoqueiro.dart`.
 
-Sprint 3a (localização e mapa, docs/especificacao-sprint3a.md) em curso.
-Feitas as secções 1 e 2: `pubspec.yaml` com `flutter_map`, `latlong2`,
-`geolocator`, `http`; permissões de localização e internet no
-`AndroidManifest.xml`; `minSdkVersion` já cumpria o mínimo de 21 sem
-alterações (`flutter.minSdkVersion` = 24 nesta versão do Flutter). Domínio
-em `funcionalidades/localizacao/dominio/`: `Coordenada` (Haversine em
+Antes do sprint 3a, a paleta mudou de âmbar para um tema de praia de
+Vilankulos: `CoresApp.primaria`/`primariaEscura`/`primariaClara`/
+`onPrimaria` (turquesa do mar, substitui `ambar*`) e
+`destaque`/`destaqueEscura`/`destaqueClara`/`onDestaque` (coral do
+pôr-do-sol, nova segunda cor — antes era só um tom do âmbar). Neutros
+também mudaram: fundo claro para tom de areia, fundo escuro para "noite de
+oceano". `onPrimary` do tema passou de texto escuro para branco, porque o
+turquesa é mais escuro que o âmbar antigo. Sem ficheiros de imagem nem
+dependências novas — só constantes em `cores_app.dart` e o `ColorScheme`
+em `tema_app.dart`.
+
+Sprint 3a (localização e mapa, docs/especificacao-sprint3a.md) fechado.
+Secções 1 e 2: `pubspec.yaml` com `flutter_map`, `latlong2`, `geolocator`,
+`http`; permissões de localização e internet no `AndroidManifest.xml`;
+`minSdkVersion` já cumpria o mínimo de 21 sem alterações
+(`flutter.minSdkVersion` = 24 nesta versão do Flutter). Domínio em
+`funcionalidades/localizacao/dominio/`: `Coordenada` (Haversine em
 `dart:math`, sem Flutter), `Local`/`TipoLocal`, `ExcecaoLocalizacao`/
 `ExcecaoPesquisa`. Falta configurar o `Info.plist` do iOS (a spec só cobre
 Android) — sinalizado, não feito, à espera de instrução.
 
-Faltam: secções 3 a 11 (estado das permissões, os dois repositórios, o
-controlador, os quatro ecrãs, e a revisão do `redirect` para rotas
-empilhadas — pedida explicitamente para me mostrares antes de aplicar).
+Secções 3 a 6: `EstadoPermissaoLocalizacao` (dominio), os dois
+repositórios (`RepositorioLocalizacao` com implementação real via
+`geolocator` e uma simulada; `RepositorioLugares` com implementação real
+via Nominatim, com limite de 1 pedido/segundo aplicado no próprio
+repositório, e uma simulada com uma dúzia de locais reais de
+Inhambane/Maxixe/Vilankulos) e `ControladorMapa`/`EstadoMapa`. O debounce
+de 600ms da pesquisa não fica no repositório — fica num controlador
+próprio (`ControladorPesquisaDestino`, feito com a Tela 9), com um
+contador de geração para descartar respostas atrasadas de pedidos já
+cancelados.
+
+Telas 7 a 10 feitas. Duas coisas nasceram na Tela 7, fora da lista de
+métodos original da spec, por necessidade concreta ao construir o ecrã:
+`EstadoMapa.podeContinuarSemPosicao` (mesmo padrão do `aprovacaoConfirmada`
+do cadastro — sem isto o redirect nunca saberia que o utilizador escolheu
+avançar sem GPS) e `ControladorMapa.abrirDefinicoesApp()`/
+`abrirDefinicoesLocalizacao()` (o ecrã nunca toca no repositório
+diretamente). O ecrã observa o ciclo de vida da app (`WidgetsBindingObserver`)
+para voltar a verificar a permissão quando a app regressa do ecrã de
+definições do sistema, porque o `Future` do `geolocator` ao abrir essas
+definições resolve assim que a alavanca dispara, não quando o utilizador
+volta. A Tela 10 (`EcraAjustarPonto`) não tem controlador próprio — só
+`setState` local, porque não há decisão de negócio, só uma chamada ao
+repositório e mostrar o resultado (mesmo espírito do padrão sem
+`ref.listen` da Tela 3 do cadastro). O menu da Tela 8 e os atalhos
+"Casa"/"Trabalho" ficam como placeholder (`SnackBar` "Em breve") — não há
+ainda repositório de favoritos nem drawer nesta app.
+
+Secção 11 fechada: `/permissao-localizacao`, `/pesquisa-destino` e
+`/ajustar-ponto` acrescentadas a `Rotas`, com `rotasEmpilhadas` a marcar as
+duas últimas como empilhadas — o `redirect` devolve `null` de imediato para
+elas, sem forçar a rota canónica. Um passageiro autenticado só chega a
+`/inicio` se `EstadoMapa.permissao` for `concedida` ou
+`podeContinuarSemPosicao` for `true`; caso contrário fica em
+`/permissao-localizacao`. Esta gate é só do passageiro — o motoqueiro não é
+afetado. `_NotificadorNavegacao` passa a ouvir também `controladorMapaProvider`
+(pelos campos `permissao` e `podeContinuarSemPosicao`, mesmo padrão do
+`fase`+`aprovacaoConfirmada` do cadastro). O campo "Para onde vai?" no mapa
+e a linha "Escolher no mapa" na pesquisa já navegam a sério
+(`context.push`) e devolvem o `Local` escolhido pela cadeia de ecrãs
+empilhados.
+
+Duas coisas por pedido explícito, fora da spec original: o ecrã de splash
+(`EcraSplash`) mostra agora o wordmark **"VilaMova"** sobre uma estrada
+costeira ao entardecer desenhada em `CustomPaint` (sem imagem, só cores do
+`CoresApp`) — isto é só o ecrã de abertura; o nome do produto continua
+"MotoTáxi Inhambane" em todo o resto. E o centro por omissão do mapa (sem
+posição real) e a coordenada da posição simulada
+(`RepositorioLocalizacaoSimulado`) passaram de Inhambane-cidade para
+Vilankulos (-21.9833, 35.3167), em `EcraMapaInicio`, `EcraAjustarPonto` e
+no repositório simulado.
+
+Terceira coisa fora da spec, por pedido explícito: seletor de tipo de
+veículo com preço estimado, no mapa. `TipoVeiculo` (domínio puro, em
+`funcionalidades/inicio/dominio/`) tem 4 valores — camioneta ("Cargas"),
+txopela ("Viagem"), mota ("Viagem mais rápida") e carro ("Viagem mais
+confortável") — cada um com ícone Material (sem imagens nem dependências
+novas). `RepositorioPrecos` (interface + `RepositorioPrecosSimulado`, em
+`funcionalidades/inicio/dados/`) estima o preço por tipo a partir da
+distância (Haversine) entre a posição atual e o destino, com tarifa base +
+por km e um mínimo de 0,5 km faturados. Isto respeita a regra 5 do
+`CLAUDE.md`: o preço mostrado é sempre uma estimativa de um repositório
+simulado, nunca calculado à mão no ecrã — quando o Supabase estiver
+ligado, troca-se só a implementação. `ControladorMapa.escolherDestino()`
+passou a assíncrono para pedir a estimativa assim que o destino é
+escolhido, com um controlo simples de resposta desatualizada (compara o
+destino antes e depois do `await`). O botão "Pedir viagem" já mostra o
+preço do veículo selecionado e o spinner de carregamento do
+`BotaoPrincipal` enquanto a estimativa não chega — mas continua sem criar
+uma corrida a sério, porque isso é o ciclo completo do sprint 3b.
+
+Backend Supabase, passo 1 (migrações) feito, ainda sem projeto criado nem
+`supabase_flutter` no `pubspec.yaml`. Três migrações em `supabase/migrations/`:
+`esquema` (tabelas), `funcoes` (RPCs e gatilhos) e `seguranca` (RLS, grants,
+storage, realtime). Decisões que importam para o código Dart:
+
+- `perfis` **não tem tipo**. Um telefone = um utilizador do Supabase Auth, e a
+  mesma pessoa pode usar as duas apps. Ser motoqueiro = ter linha em
+  `motoqueiros`. O `Utilizador.tipo` continua a vir do ponto de entrada
+  (`tipoAplicacaoProvider`), como no repositório simulado.
+- O histórico é a tabela `corridas` (filtrada por `passageiro_id` ou
+  `motoqueiro_id`), mais `eventos_corrida` (auditoria, preenchida por
+  gatilho) e `avaliacoes`.
+- A app nunca escreve em `corridas`, `posicoes_motoqueiro` nem no estado de
+  verificação do motoqueiro — só através de RPCs (`pedir_corrida`,
+  `aceitar_corrida`, `submeter_cadastro`, …). O preço é calculado no
+  servidor a partir da tabela `tarifas` (mesmos valores que
+  `RepositorioPrecosSimulado`).
+- `estimar_precos` recebe **coordenadas**, não distância — o servidor
+  calcula a distância. A interface `RepositorioPrecos` terá de mudar quando
+  for ligada.
+- Erros de negócio vêm como exceção com mensagem-chave estável
+  (`corrida_ativa_existente`, `documentos_em_falta`, `transicao_invalida`,
+  …), para a app traduzir para português.
+- A aprovação de motoqueiros é feita fora da app (painel do Supabase /
+  `service_role`).
+
+Validado num Postgres 16 + PostGIS local com imitações de `auth`/`storage`:
+RLS (um terceiro utilizador não vê nada), ciclo completo de uma corrida,
+cadastro e avaliações.
+
+Backend Supabase, passos 3 a 5 (ligação na app) feitos. `pubspec.yaml`
+ganhou `supabase_flutter` e `image_picker`. Credenciais por
+`--dart-define-from-file=env/dev.json` (`SUPABASE_URL`,
+`SUPABASE_PUBLISHABLE_KEY`; modelo em `env/dev.exemplo.json`, os reais
+ignorados pelo git) — `nucleo/configuracao/configuracao_supabase.dart`.
+**Sem as chaves, tudo continua simulado** (código `123456`): cada provider de
+repositório, e o `selectorImagemProvider`, escolhem a implementação por
+`ConfiguracaoSupabase.configurado`. `arrancarApp` só chama
+`Supabase.initialize` quando configurado.
+
+- `nucleo/supabase/cliente_supabase.dart`: `clienteSupabaseProvider`,
+  conversão de telefone local ↔ E.164 e `traduzirErroSupabase()` (chaves de
+  negócio, BI/matrícula duplicados, códigos de Auth, Storage, rede). Os
+  repositórios reais apanham tudo e relançam como a exceção de domínio
+  (`ExcecaoAutenticacao`, `ExcecaoCadastro`, `ExcecaoPrecos`), por isso os
+  controladores não mudaram.
+- `RepositorioAutenticacaoSupabase`: OTP por SMS, nome em `perfis`.
+- `RepositorioCadastroSupabase`: `motoqueiros` (insert/update separados —
+  `id` não tem grant de UPDATE, por isso não há upsert), documentos no bucket
+  `documentos` em `<uid>/<tipo>` + linha em `documentos`, submissão pela RPC.
+  O parâmetro `telefone` de `cadastroAtual` é ignorado (o servidor usa
+  `auth.uid()`).
+- `RepositorioPrecos.estimarPrecos` recebe agora `origem`/`destino`
+  (`Coordenada`); `ControladorMapa` mostra a falha em `EstadoMapa.erro`.
+- `SelectorImagemDispositivo` (`image_picker`, máx. 2048 px, JPEG 85).
+
+`Info.plist` do iOS já tem `NSCameraUsageDescription` e
+`NSPhotoLibraryUsageDescription` e `NSLocationWhenInUseUsageDescription`
+(só "durante o uso" — não há localização em segundo plano).
+
+Recusa de acesso à câmara/galeria tratada na Tela 3: `SelectorImagemDispositivo`
+converte os `PlatformException` do `image_picker` em `ExcecaoSelectorImagem`
+(`dominio/excecao_selector_imagem.dart`, com `MotivoFalhaImagem`). Sem acesso
+→ diálogo com "Cancelar", a outra origem ("Escolher da galeria"/"Tirar
+fotografia") e "Abrir definições" (`SelectorImagem.abrirDefinicoesApp()`,
+via `Geolocator.openAppSettings()` — sem dependência nova). Sem câmara ou
+erro desconhecido → `SnackBar`. No Android a recusa quase não acontece (o
+manifesto não declara `CAMERA`); no iOS é o caso normal depois de recusar
+uma vez.
+
+Por fazer/verificar: teste manual contra um projeto real (ainda não feito).
 
 Passa a atualizar esta secção sempre que fechares uma secção da
 especificação — não esperes pelo fim do sprint.

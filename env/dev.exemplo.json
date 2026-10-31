@@ -1,0 +1,4 @@
+{
+  "SUPABASE_URL": "https://<id-do-projeto>.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "<chave publicável (sb_publishable_…) ou chave anon antiga — Project Settings → API Keys>"
+}
