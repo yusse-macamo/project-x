@@ -160,7 +160,8 @@ grant execute on function public.avaliar_corrida(uuid, smallint, text) to authen
 -- storage: documentos do cadastro, privados, em <id do motoqueiro>/<ficheiro>
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('documentos', 'documentos', false, 5242880, array['image/jpeg', 'image/png']);
+values ('documentos', 'documentos', false, 5242880, array['image/jpeg', 'image/png'])
+on conflict (id) do nothing;
 
 create policy "motoqueiro lê os próprios documentos" on storage.objects
   for select to authenticated

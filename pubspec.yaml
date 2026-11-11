@@ -41,6 +41,9 @@ dependencies:
   http: ^1.2.0
   supabase_flutter: ^2.18.3
   image_picker: ^1.2.4
+  speech_to_text: ^7.5.0
+  record: ^7.1.2
+  just_audio: ^0.10.6
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +66,11 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Fotografias da Wikimedia Commons (CC BY-SA 4.0) — créditos em
+  # lib/nucleo/constantes/creditos_imagens.dart.
+  assets:
+    - assets/veiculos/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

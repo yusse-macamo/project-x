@@ -1,11 +1,24 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Chave de assinatura de produção, fora do git (ver android/key.properties.exemplo).
+// Sem ela, as compilações de release são assinadas com a chave de debug e não
+// podem ser publicadas na Play Store.
+val propriedadesChave = Properties()
+val ficheiroChave = rootProject.file("key.properties")
+val temChaveRelease = ficheiroChave.exists()
+if (temChaveRelease) {
+    FileInputStream(ficheiroChave).use { propriedadesChave.load(it) }
+}
+
 android {
-    namespace = "com.example.project_x"
+    namespace = "mz.rota"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -15,21 +28,42 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.project_x"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    // Uma só app: passageiro e motorista escolhem-se dentro dela.
+    //   flutter run --flavor passageiro --dart-define-from-file=env/dev.json
+    // O flavor mantém o id já instalado (mz.rota.passageiro).
+    flavorDimensions += "app"
+    productFlavors {
+        create("passageiro") {
+            dimension = "app"
+            applicationId = "mz.rota.passageiro"
+            manifestPlaceholders["nomeApp"] = "ROTA"
+        }
+    }
+
+    signingConfigs {
+        if (temChaveRelease) {
+            create("release") {
+                keyAlias = propriedadesChave["keyAlias"] as String
+                keyPassword = propriedadesChave["keyPassword"] as String
+                storeFile = file(propriedadesChave["storeFile"] as String)
+                storePassword = propriedadesChave["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (temChaveRelease) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

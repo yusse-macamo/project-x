@@ -4,12 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:project_x/nucleo/configuracao/configuracao_ambiente.dart';
 import 'package:project_x/nucleo/configuracao/configuracao_supabase.dart';
 import 'package:project_x/nucleo/tema/tema_app.dart';
-import 'package:project_x/nucleo/tipo_aplicacao.dart';
 import 'package:project_x/rotas/rotas_app.dart';
 
-Future<Widget> arrancarApp(TipoAplicacao tipo) async {
+Future<Widget> arrancarApp() async {
+  _verificarConfiguracao();
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
     DeviceOrientation.portraitUp,
@@ -21,10 +22,18 @@ Future<Widget> arrancarApp(TipoAplicacao tipo) async {
       publishableKey: ConfiguracaoSupabase.chavePublicavel,
     );
   }
-  return ProviderScope(
-    overrides: <Override>[tipoAplicacaoProvider.overrideWithValue(tipo)],
-    child: const _App(),
-  );
+  return const ProviderScope(child: _App());
+}
+
+/// Falha logo no arranque numa versão de produção sem Supabase, que de outra
+/// forma cairia nos repositórios simulados sem ninguém notar.
+void _verificarConfiguracao() {
+  if (ConfiguracaoAmbiente.producao && !ConfiguracaoSupabase.configurado) {
+    throw StateError(
+      'Compilação de produção sem SUPABASE_URL e SUPABASE_PUBLISHABLE_KEY. '
+      'Usa --dart-define-from-file=env/prod.json.',
+    );
+  }
 }
 
 class _App extends ConsumerWidget {

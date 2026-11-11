@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,7 +16,15 @@ abstract interface class RepositorioPrecos {
   Future<Map<TipoVeiculo, double>> estimarPrecos({
     required Coordenada origem,
     required Coordenada destino,
+    ModoPreco modo = ModoPreco.quilometro,
   });
+
+  /// O servidor ainda só calcula por quilómetro: sem tabela por zona, o ecrã
+  /// esconde a escolha.
+  bool get suportaTabelaPorZona;
+
+  /// Acréscimo por levar carga; `null` esconde a opção.
+  double? get extraCargaMt;
 }
 
 class RepositorioPrecosSimulado implements RepositorioPrecos {
@@ -30,19 +40,52 @@ class RepositorioPrecosSimulado implements RepositorioPrecos {
         TipoVeiculo.camioneta: (150, 35),
       };
 
+  // Nenhuma viagem fica abaixo deste valor, em meticais. Mesmo valor que a
+  // coluna `tarifas.preco_minimo` no servidor.
+  static const Map<TipoVeiculo, double> _precoMinimo = <TipoVeiculo, double>{
+    TipoVeiculo.mota: 50,
+  };
+
+  // (até 1,5 km, até 5 km, mais longe), em meticais.
+  static const Map<TipoVeiculo, (double, double, double)> _tabelaPorZona =
+      <TipoVeiculo, (double, double, double)>{
+        TipoVeiculo.mota: (50, 100, 150),
+        TipoVeiculo.txopela: (80, 150, 220),
+        TipoVeiculo.carro: (150, 300, 450),
+        TipoVeiculo.camioneta: (300, 600, 900),
+      };
+
+  @override
+  bool get suportaTabelaPorZona => true;
+
+  @override
+  double? get extraCargaMt => 30;
+
   @override
   Future<Map<TipoVeiculo, double>> estimarPrecos({
     required Coordenada origem,
     required Coordenada destino,
+    ModoPreco modo = ModoPreco.quilometro,
   }) async {
     await Future<void>.delayed(_atraso);
     final double distanciaEmKm = origem.distanciaEmMetrosAte(destino) / 1000;
+    if (modo == ModoPreco.zona) {
+      return <TipoVeiculo, double>{
+        for (final MapEntry<TipoVeiculo, (double, double, double)> entrada
+            in _tabelaPorZona.entries)
+          entrada.key: distanciaEmKm <= 1.5
+              ? entrada.value.$1
+              : (distanciaEmKm <= 5 ? entrada.value.$2 : entrada.value.$3),
+      };
+    }
     return <TipoVeiculo, double>{
       for (final MapEntry<TipoVeiculo, (double, double)> entrada
           in _tarifas.entries)
-        entrada.key:
-            entrada.value.$1 +
-            entrada.value.$2 * distanciaEmKm.clamp(0.5, double.infinity),
+        entrada.key: math.max(
+          _precoMinimo[entrada.key] ?? 0,
+          entrada.value.$1 +
+              entrada.value.$2 * distanciaEmKm.clamp(0.5, double.infinity),
+        ),
     };
   }
 }
@@ -53,9 +96,16 @@ class RepositorioPrecosSupabase implements RepositorioPrecos {
   final SupabaseClient _cliente;
 
   @override
+  bool get suportaTabelaPorZona => false;
+
+  @override
+  double? get extraCargaMt => null;
+
+  @override
   Future<Map<TipoVeiculo, double>> estimarPrecos({
     required Coordenada origem,
     required Coordenada destino,
+    ModoPreco modo = ModoPreco.quilometro,
   }) async {
     try {
       final List<dynamic> linhas = await _cliente.rpc<List<dynamic>>(
@@ -79,7 +129,7 @@ class RepositorioPrecosSupabase implements RepositorioPrecos {
         traduzirErroSupabase(
           erro,
           porOmissao:
-              'Não foi possível calcular o preço. Escolha o destino de novo.',
+              'Não foi possível calcular o preço. Escolhe o destino de novo.',
         ),
       );
     }

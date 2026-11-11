@@ -3,10 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:project_x/funcionalidades/autenticacao/apresentacao/widgets/mudar_tipo.dart';
+import 'package:project_x/funcionalidades/autenticacao/dominio/utilizador.dart';
+import 'package:project_x/funcionalidades/autenticacao/apresentacao/controladores/controlador_autenticacao.dart';
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/apresentacao/controladores/controlador_cadastro.dart';
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/dominio/motoqueiro.dart';
 import 'package:project_x/nucleo/tema/cores_app.dart';
 import 'package:project_x/partilhado/widgets/botao_principal.dart';
+import 'package:project_x/partilhado/widgets/dialogo_confirmacao.dart';
 
 const List<String> _meses = <String>[
   'janeiro',
@@ -75,42 +79,42 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
     );
   }
 
+  Future<void> _terminarSessao() async {
+    if (!await confirmarTerminarSessao(context) || !mounted) {
+      return;
+    }
+    await ref.read(controladorAutenticacaoProvider.notifier).terminarSessao();
+    final String? erro = ref.read(controladorAutenticacaoProvider).erro;
+    if (erro == null || !mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(erro)));
+    ref.read(controladorAutenticacaoProvider.notifier).limparErro();
+  }
+
+  Widget _botaoTerminarSessao() {
+    return IconButton(
+      icon: const Icon(Icons.logout),
+      tooltip: 'Terminar sessão',
+      onPressed: _terminarSessao,
+    );
+  }
+
+  Widget _botaoMudarParaPassageiro() {
+    return IconButton(
+      icon: const Icon(Icons.person_pin_circle_outlined),
+      tooltip: 'Mudar para passageiro',
+      onPressed: () =>
+          mudarTipoComConfirmacao(context, ref, TipoUtilizador.passageiro),
+    );
+  }
+
   void _comecarATrabalhar() {
     ref.read(controladorCadastroProvider.notifier).confirmarAprovacao();
   }
 
-  FaseCadastro _passoParaCorrigir(String? motivo) {
-    final String texto = (motivo ?? '').toLowerCase();
-    const List<String> palavrasMota = <String>[
-      'matríc',
-      'matric',
-      'marca',
-      'modelo',
-      'mota',
-      'veículo',
-      'veiculo',
-    ];
-    const List<String> palavrasDocumentos = <String>[
-      'document',
-      'carta',
-      'livrete',
-      'bilhete',
-      'selfie',
-      'fotografia',
-    ];
-    if (palavrasMota.any(texto.contains)) {
-      return FaseCadastro.mota;
-    }
-    if (palavrasDocumentos.any(texto.contains)) {
-      return FaseCadastro.documentos;
-    }
-    return FaseCadastro.dados;
-  }
-
-  void _corrigirDados(String? motivo) {
-    ref
-        .read(controladorCadastroProvider.notifier)
-        .voltarPara(_passoParaCorrigir(motivo));
+  void _corrigirDados() {
+    ref.read(controladorCadastroProvider.notifier).corrigir();
   }
 
   String _formatarData(DateTime data) {
@@ -132,6 +136,9 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
     final ColorScheme cores = Theme.of(context).colorScheme;
 
     return Scaffold(
+      appBar: AppBar(
+        actions: <Widget>[_botaoMudarParaPassageiro(), _botaoTerminarSessao()],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
@@ -157,7 +164,7 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Estamos a confirmar os seus documentos. Costuma '
+                        'Estamos a confirmar os teus dados e fotografias. Costuma '
                         'demorar até 24 horas.',
                         style: textos.bodyMedium?.copyWith(
                           color: cores.onSurfaceVariant,
@@ -197,6 +204,7 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
         backgroundColor: CoresApp.erroClaro,
         foregroundColor: CoresApp.erro,
         title: const Text('Cadastro não aprovado'),
+        actions: <Widget>[_botaoMudarParaPassageiro(), _botaoTerminarSessao()],
       ),
       body: SafeArea(
         child: Padding(
@@ -218,7 +226,7 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
               const Spacer(),
               BotaoPrincipal(
                 texto: 'Corrigir dados',
-                aoPremir: () => _corrigirDados(motoqueiro?.motivoRejeicao),
+                aoPremir: () => _corrigirDados(),
               ),
             ],
           ),
@@ -249,7 +257,7 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'Está aprovado',
+                        'Estás aprovado',
                         style: textos.headlineSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -257,7 +265,7 @@ class _EcraAguardaAprovacaoState extends ConsumerState<EcraAguardaAprovacao> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Já pode começar a receber pedidos de corrida.',
+                        'Já podes começar a receber pedidos de corrida.',
                         style: textos.bodyMedium?.copyWith(
                           color: cores.onSurfaceVariant,
                         ),

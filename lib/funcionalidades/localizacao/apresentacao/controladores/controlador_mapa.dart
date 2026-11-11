@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:project_x/funcionalidades/autenticacao/apresentacao/controladores/controlador_autenticacao.dart';
 import 'package:project_x/funcionalidades/inicio/dados/repositorio_precos.dart';
 import 'package:project_x/funcionalidades/inicio/dominio/excecao_precos.dart';
 import 'package:project_x/funcionalidades/inicio/dominio/tipo_veiculo.dart';
@@ -19,8 +20,10 @@ class EstadoMapa {
     this.podeContinuarSemPosicao = false,
     this.precosEstimados,
     this.aCalcularPrecos = false,
+    this.modoPreco = ModoPreco.quilometro,
   });
 
+  final ModoPreco modoPreco;
   final EstadoPermissaoLocalizacao permissao;
   final Coordenada? posicaoAtual;
   final bool aCarregar;
@@ -39,6 +42,7 @@ class EstadoMapa {
     bool? podeContinuarSemPosicao,
     Map<TipoVeiculo, double>? precosEstimados,
     bool? aCalcularPrecos,
+    ModoPreco? modoPreco,
     bool limparErro = false,
     bool limparDestino = false,
     bool limparPrecos = false,
@@ -55,6 +59,7 @@ class EstadoMapa {
           ? null
           : (precosEstimados ?? this.precosEstimados),
       aCalcularPrecos: aCalcularPrecos ?? this.aCalcularPrecos,
+      modoPreco: modoPreco ?? this.modoPreco,
     );
   }
 }
@@ -66,7 +71,24 @@ class ControladorMapa extends Notifier<EstadoMapa> {
   );
 
   @override
-  EstadoMapa build() => const EstadoMapa();
+  EstadoMapa build() {
+    // Outra sessão (ou nenhuma) nunca herda o destino nem os preços da
+    // anterior.
+    ref.watch(
+      controladorAutenticacaoProvider.select(
+        (EstadoAutenticacao estado) => estado.utilizador?.id,
+      ),
+    );
+    return EstadoMapa(
+      modoPreco: ref.read(repositorioPrecosProvider).suportaTabelaPorZona
+          ? ModoPreco.zona
+          : ModoPreco.quilometro,
+    );
+  }
+
+  bool get suportaTabelaPorZona => _repositorioPrecos.suportaTabelaPorZona;
+
+  double? get extraCargaMt => _repositorioPrecos.extraCargaMt;
 
   RepositorioLocalizacao get _repositorio =>
       ref.read(repositorioLocalizacaoProvider);
@@ -105,21 +127,42 @@ class ControladorMapa extends Notifier<EstadoMapa> {
   }
 
   Future<void> escolherDestino(Local local) async {
+    state = state.copiarCom(destino: local);
+    await _estimarPrecos();
+  }
+
+  Future<void> mudarModoPreco(ModoPreco modo) async {
+    if (modo == state.modoPreco) {
+      return;
+    }
+    state = state.copiarCom(modoPreco: modo);
+    await _estimarPrecos();
+  }
+
+  Future<void> tentarEstimarDeNovo() => _estimarPrecos();
+
+  Future<void> _estimarPrecos() async {
+    final Local? local = state.destino;
+    if (local == null) {
+      return;
+    }
+    final ModoPreco modo = state.modoPreco;
     state = state.copiarCom(
-      destino: local,
       aCalcularPrecos: true,
       limparPrecos: true,
+      limparErro: true,
     );
     final Coordenada origem = state.posicaoAtual ?? _centroVilankulos;
+    bool desatualizado() => state.destino != local || state.modoPreco != modo;
     try {
       final Map<TipoVeiculo, double> precos = await _repositorioPrecos
-          .estimarPrecos(origem: origem, destino: local.coordenada);
-      if (state.destino != local) {
+          .estimarPrecos(origem: origem, destino: local.coordenada, modo: modo);
+      if (desatualizado()) {
         return;
       }
       state = state.copiarCom(precosEstimados: precos, aCalcularPrecos: false);
     } on ExcecaoPrecos catch (e) {
-      if (state.destino != local) {
+      if (desatualizado()) {
         return;
       }
       state = state.copiarCom(aCalcularPrecos: false, erro: e.mensagem);

@@ -1,0 +1,5 @@
+{
+  "AMBIENTE": "prod",
+  "SUPABASE_URL": "https://<id-do-projeto-de-producao>.supabase.co",
+  "SUPABASE_PUBLISHABLE_KEY": "<chave publicável do projeto de produção>"
+}

@@ -5,6 +5,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:project_x/nucleo/tema/cores_app.dart';
 import 'package:project_x/funcionalidades/localizacao/apresentacao/controladores/controlador_mapa.dart';
 import 'package:project_x/funcionalidades/localizacao/dados/repositorio_lugares.dart';
 import 'package:project_x/funcionalidades/localizacao/dominio/coordenada.dart';
@@ -106,8 +107,24 @@ class _EcraAjustarPontoState extends ConsumerState<EcraAjustarPonto> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.project_x',
               ),
-              const SimpleAttributionWidget(
-                source: Text('OpenStreetMap contributors'),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(4),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: CoresApp.creme.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Text(
+                        '© OpenStreetMap',
+                        style: TextStyle(color: CoresApp.marinho, fontSize: 10),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

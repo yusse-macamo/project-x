@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:project_x/funcionalidades/localizacao/dados/repositorio_lugares.dart';
 import 'package:project_x/funcionalidades/localizacao/dominio/coordenada.dart';
+import 'package:project_x/funcionalidades/localizacao/dominio/correspondencia_texto.dart';
 import 'package:project_x/funcionalidades/localizacao/dominio/excecoes.dart';
 import 'package:project_x/funcionalidades/localizacao/dominio/local.dart';
 
@@ -69,6 +70,56 @@ class ControladorPesquisaDestino extends Notifier<EstadoPesquisaDestino> {
     _temporizadorDebounce = Timer(_atrasoDebounce, () {
       _pesquisarAgora(termo, perto: perto);
     });
+  }
+
+  /// Pedido falado ("quero ir ao mercado municipal"): tira o "quero ir ao",
+  /// pesquisa já, sem esperar o debounce, e devolve o lugar mais provável
+  /// para ser marcado logo. `null` se nada corresponder — os resultados (ou a
+  /// falta deles) ficam no estado para a pessoa ver.
+  ///
+  /// [conhecidos] são os marcos e paragens que a app já conhece: contam
+  /// primeiro, porque é assim que as pessoas daqui chamam os lugares.
+  Future<Local?> pesquisarPorVoz(
+    String frase, {
+    Coordenada? perto,
+    List<Local> conhecidos = const <Local>[],
+  }) async {
+    _temporizadorDebounce?.cancel();
+    final String termo = extrairDestino(frase);
+    state = state.copiarCom(termo: termo, limparErro: true);
+    if (termo.isEmpty) {
+      return null;
+    }
+    final Local? conhecido = _melhorCorrespondencia(termo, conhecidos);
+    await _pesquisarAgora(termo, perto: perto);
+    if (conhecido != null) {
+      state = state.copiarCom(
+        resultados: <Local>[
+          conhecido,
+          ...state.resultados.where((Local l) => l.nome != conhecido.nome),
+        ],
+        limparErro: true,
+      );
+      return conhecido;
+    }
+    return state.erro == null ? state.resultados.firstOrNull : null;
+  }
+
+  /// O lugar com mais palavras em comum com o [termo]; empate → o primeiro.
+  static Local? _melhorCorrespondencia(String termo, List<Local> lugares) {
+    Local? melhor;
+    int melhorPontuacao = 0;
+    for (final Local lugar in lugares) {
+      final int pontos = pontuarCorrespondencia(
+        termo,
+        '${lugar.nome} ${lugar.descricao ?? ''}',
+      );
+      if (pontos > melhorPontuacao) {
+        melhorPontuacao = pontos;
+        melhor = lugar;
+      }
+    }
+    return melhor;
   }
 
   void tentarNovamente({Coordenada? perto}) {

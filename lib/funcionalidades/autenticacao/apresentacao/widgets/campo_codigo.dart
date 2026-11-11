@@ -4,11 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:project_x/nucleo/tema/cores_app.dart';
 
 class CampoCodigo extends StatefulWidget {
-  const CampoCodigo({
-    required this.aoCompletar,
-    this.ativo = true,
-    super.key,
-  });
+  const CampoCodigo({required this.aoCompletar, this.ativo = true, super.key});
 
   final ValueChanged<String> aoCompletar;
   final bool ativo;

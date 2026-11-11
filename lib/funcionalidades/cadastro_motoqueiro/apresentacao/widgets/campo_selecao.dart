@@ -69,7 +69,10 @@ class CampoSelecao<T> extends StatelessWidget {
           child: InputDecorator(
             decoration: InputDecoration(
               hintText: dica,
-              suffixIcon: Icon(Icons.expand_more, color: cores.onSurfaceVariant),
+              suffixIcon: Icon(
+                Icons.expand_more,
+                color: cores.onSurfaceVariant,
+              ),
             ),
             isEmpty: valorAtual == null,
             child: valorAtual == null ? null : Text(_textoOpcao(valorAtual)),

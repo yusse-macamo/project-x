@@ -1,10 +1,11 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:project_x/funcionalidades/cadastro_motoqueiro/dominio/motoqueiro.dart';
+import 'package:project_x/funcionalidades/inicio/dominio/tipo_veiculo.dart';
 import 'package:project_x/nucleo/configuracao/configuracao_supabase.dart';
 import 'package:project_x/nucleo/supabase/cliente_supabase.dart';
 
@@ -13,19 +14,16 @@ abstract interface class RepositorioCadastro {
 
   Future<Motoqueiro> guardarDadosPessoais({
     required String telefone,
+    required TipoVeiculo tipoVeiculo,
     required String nomeCompleto,
-    required String numeroBi,
-    required String bairro,
-    required String distrito,
-    required String contactoEmergencia,
+    required String email,
   });
 
-  Future<Motoqueiro> guardarDadosMota({
+  Future<Motoqueiro> guardarDadosVeiculo({
     required String matricula,
-    required String marca,
-    required String modelo,
     required String cor,
-    required int anoFabrico,
+    String? marca,
+    String? modelo,
   });
 
   Future<Motoqueiro> enviarDocumento({
@@ -41,7 +39,6 @@ class RepositorioCadastroSimulado implements RepositorioCadastro {
   static const Duration _atrasoAprovacao = Duration(seconds: 20);
 
   Motoqueiro? _atual;
-  bool _livreteJaFalhou = false;
 
   @override
   Future<Motoqueiro?> cadastroAtual(String telefone) async {
@@ -56,51 +53,42 @@ class RepositorioCadastroSimulado implements RepositorioCadastro {
   @override
   Future<Motoqueiro> guardarDadosPessoais({
     required String telefone,
+    required TipoVeiculo tipoVeiculo,
     required String nomeCompleto,
-    required String numeroBi,
-    required String bairro,
-    required String distrito,
-    required String contactoEmergencia,
+    required String email,
   }) async {
     await Future<void>.delayed(_atraso);
     final Motoqueiro? existente = _atual?.telefone == telefone ? _atual : null;
-    final Motoqueiro atualizado = Motoqueiro(
-      id: 'motoqueiro-$telefone',
-      telefone: telefone,
-      nomeCompleto: nomeCompleto,
-      numeroBi: numeroBi,
-      bairro: bairro,
-      distrito: distrito,
-      contactoEmergencia: contactoEmergencia,
-      matricula: existente?.matricula,
-      marca: existente?.marca,
-      modelo: existente?.modelo,
-      cor: existente?.cor,
-      anoFabrico: existente?.anoFabrico,
-      estadoVerificacao:
-          existente?.estadoVerificacao ?? EstadoVerificacao.incompleto,
-      documentos: existente?.documentos ?? const <TipoDocumento, String>{},
-    );
+    final Motoqueiro atualizado =
+        existente?.copiarCom(
+          tipoVeiculo: tipoVeiculo,
+          nomeCompleto: nomeCompleto,
+          email: email,
+        ) ??
+        Motoqueiro(
+          id: 'motoqueiro-$telefone',
+          telefone: telefone,
+          tipoVeiculo: tipoVeiculo,
+          nomeCompleto: nomeCompleto,
+          email: email,
+        );
     _atual = atualizado;
     return atualizado;
   }
 
   @override
-  Future<Motoqueiro> guardarDadosMota({
+  Future<Motoqueiro> guardarDadosVeiculo({
     required String matricula,
-    required String marca,
-    required String modelo,
     required String cor,
-    required int anoFabrico,
+    String? marca,
+    String? modelo,
   }) async {
     await Future<void>.delayed(_atraso);
-    final Motoqueiro atual = _exigirCadastroAtual();
-    final Motoqueiro atualizado = atual.copiarCom(
+    final Motoqueiro atualizado = _exigirCadastroAtual().copiarCom(
       matricula: matricula,
+      cor: cor,
       marca: marca,
       modelo: modelo,
-      cor: cor,
-      anoFabrico: anoFabrico,
     );
     _atual = atualizado;
     return atualizado;
@@ -113,12 +101,6 @@ class RepositorioCadastroSimulado implements RepositorioCadastro {
   }) async {
     await Future<void>.delayed(_atraso);
     final Motoqueiro atual = _exigirCadastroAtual();
-    if (tipo == TipoDocumento.livrete && !_livreteJaFalhou) {
-      _livreteJaFalhou = true;
-      throw const ExcecaoCadastro(
-        'Não foi possível enviar o livrete. Tente novamente.',
-      );
-    }
     final Map<TipoDocumento, String> documentos =
         Map<TipoDocumento, String>.from(atual.documentos)..[tipo] = caminho;
     final Motoqueiro atualizado = atual.copiarCom(documentos: documentos);
@@ -130,6 +112,16 @@ class RepositorioCadastroSimulado implements RepositorioCadastro {
   Future<Motoqueiro> submeterParaAprovacao() async {
     await Future<void>.delayed(_atraso);
     final Motoqueiro atual = _exigirCadastroAtual();
+    if (!atual.dadosVeiculoCompletos) {
+      throw const ExcecaoCadastro(
+        'Faltam dados do veículo. Volta ao passo anterior e completa-os.',
+      );
+    }
+    if (atual.documentosEmFalta.isNotEmpty) {
+      throw const ExcecaoCadastro(
+        'Faltam fotografias. Envia todas antes de submeter.',
+      );
+    }
     final Motoqueiro atualizado = atual.copiarCom(
       estadoVerificacao: EstadoVerificacao.pendente,
       dataSubmissao: DateTime.now(),
@@ -167,11 +159,18 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
 
   static const Map<TipoDocumento, String> _tiposDocumento =
       <TipoDocumento, String>{
+        TipoDocumento.fotoMotorista: 'foto_motorista',
+        TipoDocumento.veiculoFrente: 'veiculo_frente',
+        TipoDocumento.veiculoTraseira: 'veiculo_traseira',
         TipoDocumento.cartaConducao: 'carta_conducao',
-        TipoDocumento.livrete: 'livrete',
-        TipoDocumento.bilheteIdentidade: 'bilhete_identidade',
-        TipoDocumento.selfie: 'selfie',
       };
+
+  static const Map<TipoVeiculo, String> _tiposVeiculo = <TipoVeiculo, String>{
+    TipoVeiculo.mota: 'mota',
+    TipoVeiculo.txopela: 'txopela',
+    TipoVeiculo.carro: 'carro',
+    TipoVeiculo.camioneta: 'camioneta',
+  };
 
   final SupabaseClient _cliente;
 
@@ -181,26 +180,22 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
   Future<Motoqueiro?> cadastroAtual(String telefone) {
     return _protegido(
       _carregar,
-      porOmissao: 'Não foi possível carregar o seu cadastro. Tente de novo.',
+      porOmissao: 'Não foi possível carregar o teu cadastro. Tenta de novo.',
     );
   }
 
   @override
   Future<Motoqueiro> guardarDadosPessoais({
     required String telefone,
+    required TipoVeiculo tipoVeiculo,
     required String nomeCompleto,
-    required String numeroBi,
-    required String bairro,
-    required String distrito,
-    required String contactoEmergencia,
+    required String email,
   }) {
     return _protegido(() async {
       final Map<String, Object?> dados = <String, Object?>{
+        'tipo_veiculo': _tiposVeiculo[tipoVeiculo],
         'nome_completo': nomeCompleto,
-        'numero_bi': numeroBi,
-        'bairro': bairro,
-        'distrito': distrito,
-        'contacto_emergencia': contactoEmergencia,
+        'email': email,
       };
       // Sem upsert: a coluna `id` não tem permissão de UPDATE, e o upsert do
       // PostgREST reescreve todas as colunas enviadas.
@@ -218,30 +213,32 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
         await _cliente.from('motoqueiros').update(dados).eq('id', _idAtual);
       }
       return _carregarObrigatorio();
-    }, porOmissao: 'Não foi possível guardar os seus dados. Tente de novo.');
+    }, porOmissao: 'Não foi possível guardar os teus dados. Tenta de novo.');
   }
 
   @override
-  Future<Motoqueiro> guardarDadosMota({
+  Future<Motoqueiro> guardarDadosVeiculo({
     required String matricula,
-    required String marca,
-    required String modelo,
     required String cor,
-    required int anoFabrico,
+    String? marca,
+    String? modelo,
   }) {
-    return _protegido(() async {
-      await _cliente
-          .from('motoqueiros')
-          .update(<String, Object?>{
-            'matricula': matricula,
-            'marca': marca,
-            'modelo': modelo,
-            'cor': cor,
-            'ano_fabrico': anoFabrico,
-          })
-          .eq('id', _idAtual);
-      return _carregarObrigatorio();
-    }, porOmissao: 'Não foi possível guardar os dados da mota. Tente de novo.');
+    return _protegido(
+      () async {
+        await _cliente
+            .from('motoqueiros')
+            .update(<String, Object?>{
+              'matricula': matricula,
+              'cor': cor,
+              'marca': marca,
+              'modelo': modelo,
+            })
+            .eq('id', _idAtual);
+        return _carregarObrigatorio();
+      },
+      porOmissao:
+          'Não foi possível guardar os dados do veículo. Tenta de novo.',
+    );
   }
 
   @override
@@ -253,14 +250,17 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
       final String tipoServidor = _tiposDocumento[tipo]!;
       // Um ficheiro por tipo, sempre com o mesmo nome: reenviar substitui.
       final String caminhoStorage = '$_idAtual/$tipoServidor';
-      final String contentType = caminho.toLowerCase().endsWith('.png')
+      // XFile lê tanto um ficheiro no telemóvel como um `blob:` no browser.
+      final XFile ficheiro = XFile(caminho);
+      final String contentType =
+          (ficheiro.mimeType ?? caminho).toLowerCase().contains('png')
           ? 'image/png'
           : 'image/jpeg';
       await _cliente.storage
           .from(_bucket)
-          .upload(
+          .uploadBinary(
             caminhoStorage,
-            File(caminho),
+            await ficheiro.readAsBytes(),
             fileOptions: FileOptions(upsert: true, contentType: contentType),
           );
       await _cliente.from('documentos').upsert(<String, Object?>{
@@ -270,7 +270,7 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
         'enviado_em': DateTime.now().toUtc().toIso8601String(),
       }, onConflict: 'motoqueiro_id,tipo');
       return _carregarObrigatorio();
-    }, porOmissao: 'Não foi possível enviar o documento. Tente novamente.');
+    }, porOmissao: 'Não foi possível enviar a fotografia. Tenta de novo.');
   }
 
   @override
@@ -278,14 +278,14 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
     return _protegido(() async {
       await _cliente.rpc<dynamic>('submeter_cadastro');
       return _carregarObrigatorio();
-    }, porOmissao: 'Não foi possível submeter o cadastro. Tente de novo.');
+    }, porOmissao: 'Não foi possível submeter o cadastro. Tenta de novo.');
   }
 
   String get _idAtual {
     final User? utilizador = _cliente.auth.currentUser;
     if (utilizador == null) {
       throw const ExcecaoCadastro(
-        'A sua sessão terminou. Entre de novo com o seu número.',
+        'A tua sessão terminou. Entra de novo com o teu número.',
       );
     }
     return utilizador.id;
@@ -304,7 +304,7 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
     final Motoqueiro? motoqueiro = await _carregar();
     if (motoqueiro == null) {
       throw const ExcecaoCadastro(
-        'Não encontrámos o seu cadastro. Preencha os seus dados para continuar.',
+        'Não encontrámos o teu cadastro. Preenche os teus dados para continuar.',
       );
     }
     return motoqueiro;
@@ -315,22 +315,26 @@ class RepositorioCadastroSupabase implements RepositorioCadastro {
       for (final MapEntry<TipoDocumento, String> e in _tiposDocumento.entries)
         e.value: e.key,
     };
+    final TipoVeiculo tipoVeiculo = _tiposVeiculo.entries
+        .firstWhere(
+          (MapEntry<TipoVeiculo, String> e) => e.value == linha['tipo_veiculo'],
+          orElse: () =>
+              const MapEntry<TipoVeiculo, String>(TipoVeiculo.mota, 'mota'),
+        )
+        .key;
     final List<dynamic> documentos =
         linha['documentos'] as List<dynamic>? ?? <dynamic>[];
     final String? submetidoEm = linha['submetido_em'] as String?;
     return Motoqueiro(
       id: linha['id'] as String,
       telefone: telefoneLocal(_cliente.auth.currentUser?.phone),
+      tipoVeiculo: tipoVeiculo,
       nomeCompleto: linha['nome_completo'] as String,
-      numeroBi: linha['numero_bi'] as String,
-      bairro: linha['bairro'] as String,
-      distrito: linha['distrito'] as String,
-      contactoEmergencia: linha['contacto_emergencia'] as String,
+      email: linha['email'] as String? ?? '',
       matricula: linha['matricula'] as String?,
+      cor: linha['cor'] as String?,
       marca: linha['marca'] as String?,
       modelo: linha['modelo'] as String?,
-      cor: linha['cor'] as String?,
-      anoFabrico: linha['ano_fabrico'] as int?,
       estadoVerificacao: EstadoVerificacao.values.byName(
         linha['estado_verificacao'] as String,
       ),

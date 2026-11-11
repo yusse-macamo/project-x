@@ -1,23 +1,40 @@
+import 'package:project_x/funcionalidades/inicio/dominio/tipo_veiculo.dart';
+
 enum EstadoVerificacao { incompleto, pendente, aprovado, rejeitado }
 
-enum TipoDocumento { cartaConducao, livrete, bilheteIdentidade, selfie }
+enum TipoDocumento {
+  fotoMotorista,
+  veiculoFrente,
+  veiculoTraseira,
+  cartaConducao,
+}
 
-enum PassoCadastro { dados, mota, documentos }
+/// Veículos com que se pode trabalhar na ROTA. A camioneta fica para o
+/// transporte de mercadorias.
+const List<TipoVeiculo> veiculosDeTrabalho = veiculosDeViagem;
+
+/// Fotografias pedidas a cada tipo de veículo: a mota não pede carta.
+List<TipoDocumento> documentosExigidos(TipoVeiculo tipo) => <TipoDocumento>[
+  TipoDocumento.fotoMotorista,
+  TipoDocumento.veiculoFrente,
+  TipoDocumento.veiculoTraseira,
+  if (tipo != TipoVeiculo.mota) TipoDocumento.cartaConducao,
+];
+
+/// Só o táxi pede marca e modelo.
+bool exigeMarcaModelo(TipoVeiculo tipo) => tipo == TipoVeiculo.carro;
 
 class Motoqueiro {
   const Motoqueiro({
     required this.id,
     required this.telefone,
+    required this.tipoVeiculo,
     required this.nomeCompleto,
-    required this.numeroBi,
-    required this.bairro,
-    required this.distrito,
-    required this.contactoEmergencia,
+    required this.email,
     this.matricula,
+    this.cor,
     this.marca,
     this.modelo,
-    this.cor,
-    this.anoFabrico,
     this.estadoVerificacao = EstadoVerificacao.incompleto,
     this.motivoRejeicao,
     this.documentos = const <TipoDocumento, String>{},
@@ -26,50 +43,35 @@ class Motoqueiro {
 
   final String id;
   final String telefone;
+  final TipoVeiculo tipoVeiculo;
   final String nomeCompleto;
-  final String numeroBi;
-  final String bairro;
-  final String distrito;
-  final String contactoEmergencia;
+  final String email;
   final String? matricula;
+  final String? cor;
   final String? marca;
   final String? modelo;
-  final String? cor;
-  final int? anoFabrico;
   final EstadoVerificacao estadoVerificacao;
   final String? motivoRejeicao;
   final Map<TipoDocumento, String> documentos;
   final DateTime? dataSubmissao;
 
-  /// Passo em falta para um cadastro já iniciado (ver [Motoqueiro]).
-  ///
-  /// Um telefone sem nenhum [Motoqueiro] ainda (`cadastroAtual` devolve
-  /// `null`) está sempre no passo [PassoCadastro.dados] — esse caso não
-  /// passa por este getter, é tratado por quem chama o repositório.
-  PassoCadastro get passoAtual {
-    final bool dadosMotaCompletos =
-        matricula != null &&
-        marca != null &&
-        modelo != null &&
-        cor != null &&
-        anoFabrico != null;
-    if (!dadosMotaCompletos) {
-      return PassoCadastro.mota;
-    }
-    return PassoCadastro.documentos;
-  }
+  List<TipoDocumento> get documentosEmFalta => documentosExigidos(
+    tipoVeiculo,
+  ).where((TipoDocumento tipo) => !documentos.containsKey(tipo)).toList();
+
+  bool get dadosVeiculoCompletos =>
+      matricula != null &&
+      cor != null &&
+      (!exigeMarcaModelo(tipoVeiculo) || (marca != null && modelo != null));
 
   Motoqueiro copiarCom({
+    TipoVeiculo? tipoVeiculo,
     String? nomeCompleto,
-    String? numeroBi,
-    String? bairro,
-    String? distrito,
-    String? contactoEmergencia,
+    String? email,
     String? matricula,
+    String? cor,
     String? marca,
     String? modelo,
-    String? cor,
-    int? anoFabrico,
     EstadoVerificacao? estadoVerificacao,
     String? motivoRejeicao,
     bool limparMotivoRejeicao = false,
@@ -79,16 +81,13 @@ class Motoqueiro {
     return Motoqueiro(
       id: id,
       telefone: telefone,
+      tipoVeiculo: tipoVeiculo ?? this.tipoVeiculo,
       nomeCompleto: nomeCompleto ?? this.nomeCompleto,
-      numeroBi: numeroBi ?? this.numeroBi,
-      bairro: bairro ?? this.bairro,
-      distrito: distrito ?? this.distrito,
-      contactoEmergencia: contactoEmergencia ?? this.contactoEmergencia,
+      email: email ?? this.email,
       matricula: matricula ?? this.matricula,
+      cor: cor ?? this.cor,
       marca: marca ?? this.marca,
       modelo: modelo ?? this.modelo,
-      cor: cor ?? this.cor,
-      anoFabrico: anoFabrico ?? this.anoFabrico,
       estadoVerificacao: estadoVerificacao ?? this.estadoVerificacao,
       motivoRejeicao: limparMotivoRejeicao
           ? null

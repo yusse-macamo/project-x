@@ -1,0 +1,9 @@
+# Copia para android/key.properties (ignorado pelo git) e preenche.
+# Gerar a chave uma única vez, e guardá-la num sítio seguro fora do repositório:
+#   keytool -genkey -v -keystore C:/chaves/rota-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias rota
+# Se perderes este ficheiro .jks ou a palavra-passe, deixas de conseguir
+# publicar atualizações com a mesma chave (a Play App Signing permite recuperar).
+storePassword=<palavra-passe da keystore>
+keyPassword=<palavra-passe da chave>
+keyAlias=rota
+storeFile=C:/chaves/rota-upload.jks

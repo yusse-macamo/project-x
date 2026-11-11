@@ -1,7 +1,8 @@
-# MotoTáxi Inhambane
+# ROTA (MotoTáxi Inhambane)
 
-App de mototáxi para a província de Inhambane. Liga passageiros a mototaxistas,
-com preço calculado pela distância. Expansão futura: transporte de mercadorias
+App de mototáxi para a província de Inhambane, com o nome de produto **ROTA**.
+Liga passageiros a mototaxistas, com preço por zona ou por distância, sempre
+decidido no servidor. Expansão futura: transporte de mercadorias
 entre produtores e transportadores.
 
 Duas aplicações partilham esta base de código: **passageiro** e **motoqueiro**.
@@ -19,8 +20,10 @@ Duas aplicações partilham esta base de código: **passageiro** e **motoqueiro*
 - **Todo o código em português**: pastas, ficheiros, classes, variáveis, métodos.
 - Ficheiros em `snake_case`, classes em `PascalCase`.
 - Prefixos por camada: `Ecra…`, `Controlador…`, `Repositorio…`, `Estado…`.
-- Strings visíveis ao utilizador **com acentuação correta** (português europeu):
-  "Introduza o código", não "Introduza o codigo".
+- Strings visíveis ao utilizador **com acentuação correta**, a tratar por "tu",
+  com a linguagem das maquetes da ROTA: "Introduz o código", não "Introduz o
+  codigo". Evitar género nas frases sobre o motoqueiro ("Traz o troco", não "Ele
+  traz o troco").
 - Comentários só onde a intenção não é óbvia. Sem comentários a narrar código.
 
 ## Estrutura
@@ -69,23 +72,24 @@ Se for preciso partilhar, o widget sobe para `partilhado/`.
    decisões de fluxo vivem no controlador ou no domínio.
 5. **Preço e atribuição do motoqueiro serão calculados no servidor.** O cliente
    nunca decide o valor final — só o apresenta.
-6. **Duas apps, um ponto de entrada cada.** `passageiro` e `motoqueiro` não
-   são uma escolha dentro da app — são dois pontos de entrada separados
-   (`lib/main_passageiro.dart` e `lib/main_motoqueiro.dart`), cada um a
-   chamar `arrancarApp(TipoAplicacao.…)` com o seu tipo fixo, sobreposto
-   uma única vez em `tipoAplicacaoProvider` dentro do `ProviderScope`.
-   `lib/main.dart` aponta para o de passageiro, para `flutter run` sem
-   argumentos continuar a funcionar. Para correr a app do motoqueiro:
+6. **Uma só app, passageiro e motorista escolhidos dentro dela.** Depois do
+   código, `FaseAutenticacao.escolherTipo` leva a `/tipo`
+   (`EcraEscolherTipo`): "Sou passageiro" ou "Sou motorista". A escolha fica
+   em `Utilizador.tipo` (`null` = ainda não escolheu), guardada por
+   `RepositorioAutenticacao.guardarTipo` (no Supabase, `perfis.papel`:
+   `passageiro`/`motorista`). Muda-se pelo menu com
+   `mudarTipoComConfirmacao` (menu ☰ do passageiro; separador Perfil e ecrã
+   de aprovação do motorista). O `redirect` decide sempre pelo `tipo` do
+   `Utilizador` autenticado. Um só ponto de entrada, `lib/main.dart`; no
+   Android há um único flavor, `passageiro` (id `mz.rota.passageiro`, nome
+   "ROTA"), mantido para não mudar o id já instalado:
 
    ```
-   flutter run -t lib/main_motoqueiro.dart
+   flutter run --flavor passageiro --dart-define-from-file=env/dev.json
    ```
 
-   Nenhum ecrã pergunta nem decide o tipo de utilizador. O `tipoAplicacaoProvider`
-   só influencia como o `Utilizador` é criado (`RepositorioAutenticacaoSimulado`
-   lê-o uma vez, no arranque). O `redirect` em `rotas/rotas_app.dart` nunca lê
-   `tipoAplicacaoProvider` diretamente — decide sempre pelo `tipo` do
-   `Utilizador` autenticado, que é a fonte de verdade para a navegação.
+   Ordem das fases: código → escolher tipo → nome (se faltar) → mapa ou
+   cadastro do motorista.
 
 ## Regras de UI
 
@@ -95,7 +99,8 @@ Se for preciso partilhar, o widget sobe para `partilhado/`.
   `IndicadorCarregamento` antes de criar widgets novos.
 - Margem lateral de ecrã: 24. Espaço entre blocos: 32. Entre elementos
   relacionados: 8 ou 12.
-- Raio de canto: 8 para controlos, 12 para cartões.
+- Raio de canto: 12 para controlos (`TemaApp.raioPequeno`), 16 para cartões
+  (`TemaApp.raio`).
 - Todos os ecrãs funcionam em tema claro e escuro. Verificar sempre os dois.
 - Todo o ecrã que carrega dados tem três estados visíveis: a carregar, erro
   (com forma de repetir) e vazio.
@@ -387,7 +392,233 @@ erro desconhecido → `SnackBar`. No Android a recusa quase não acontece (o
 manifesto não declara `CAMERA`); no iOS é o caso normal depois de recusar
 uma vez.
 
-Por fazer/verificar: teste manual contra um projeto real (ainda não feito).
+Navegação para trás e terminar sessão (pedido explícito, fora de spec):
+
+- Todos os ecrãs de fase com recuo têm seta **e** `PopScope(canPop: false)`
+  a chamar o mesmo método do controlador — sem isto o voltar do sistema
+  Android fechava a app, porque cada fase substitui a rota anterior.
+  Código → número (`voltarAoNumero`); completar perfil → confirmação +
+  `terminarSessao`; cadastro dados → `ControladorCadastro.voltarDoPrimeiroPasso()`
+  (volta ao ecrã de rejeitado se veio corrigir; senão confirmação +
+  terminar sessão); mota → dados; documentos → mota (bloqueado durante
+  envios). Mapa e painel do motoqueiro são raiz: o voltar sai da app (no
+  painel, primeiro regressa ao separador Início).
+- Terminar sessão: menu lateral do mapa (`_MenuLateral`, substitui o
+  placeholder do botão ☰), separador Perfil do painel do motoqueiro, e
+  ícone no AppBar do ecrã de aguardar aprovação (pendente e rejeitado).
+  Diálogo partilhado em `partilhado/widgets/dialogo_confirmacao.dart`.
+- `ControladorCadastro` e `ControladorMapa` observam o id do utilizador
+  autenticado no `build()` — mudar de sessão repõe o estado inicial, para
+  ninguém herdar cadastro/destino de outra pessoa no mesmo telemóvel.
+- `RepositorioAutenticacao.codigoDeTeste` (`'123456'` no simulado, `null`
+  no Supabase): o ecrã do código mostra uma faixa "Modo de teste" só
+  quando não há SMS real. Os separadores Corridas/Ganhos do motoqueiro
+  mostram `EstadoVazio` em vez do corpo do Início.
+
+Interfaces ROTA (11 maquetes, pedido explícito, fora de spec). O nome passa a
+ROTA em toda a app, incluindo o splash (substitui "VilaMova") e o nome em
+Android/iOS. Paleta: azul-marinho, amarelo, verde-azulado, terracota e creme
+(substitui turquesa/coral). Funcionalidades novas: `capulana/`, `corrida/`,
+`paragens/`, `voz/`, mais `inicio/dominio/praca.dart`.
+
+- Navegação: a viagem é toda por fase. Destino escolhido sem corrida →
+  `/corrida/escolher`; depois `FaseCorrida` → `/corrida/a-caminho`,
+  `/corrida/em-viagem`, `/corrida/avaliar`. No motoqueiro, `FaseMotoqueiro` →
+  `/motoqueiro/pedido`, `/motoqueiro/corrida`. Empilhadas: sinal, capulana,
+  gravar paragem, pesquisa, ajustar ponto. O `EcraCorridaMotoqueiro` (código de
+  subida e terminar) não está nas maquetes: existe para o fluxo não ficar sem
+  saída depois de aceitar.
+- **Tudo o que é novo está simulado, mesmo com o Supabase configurado**, porque
+  o servidor ainda não tem estas colunas: `repositorioCorridaProvider`,
+  `repositorioPedidosMotoqueiroProvider`, paragens, praças, capulana (só em
+  memória) e voz. Motoqueiro "Abílio", coordenadas dos marcos e tabela por zona
+  são dados de exemplo. `modoDeTeste` faz aparecer `FaixaModoTeste` nos ecrãs
+  de corrida. Com Supabase, os preços são reais mas só por quilómetro:
+  `suportaTabelaPorZona` e `extraCargaMt` escondem a zona e a carga.
+- Sem dependências novas, `pubspec.yaml` intacto: capulanas e praia em
+  `CustomPaint` (`FundoCapulana`, `_PintorPraia`), veículos com ícones, letra do
+  sistema, mapa real com filtro de cor (não o ilustrado das maquetes).
+- Incompleto de propósito: **SOS não envia alerta** (o diálogo di-lo, e tem de
+  ser ligado antes de uso real); notas de voz só contam o tempo; Ligar e
+  WhatsApp copiam para a área de transferência; "Brilho no máximo" só dá uma
+  indicação; PT/EN só traduz o ecrã de entrada; `ContactosApp.linhaPedidos` é
+  `null` até haver número real.
+- Base de dados por alterar: o código de subida não pode ficar em `corridas`,
+  porque o motoqueiro tem `select` em todas as colunas da sua corrida.
+
+Verificado com um teste temporário, já apagado: fluxo do passageiro (entrada à
+avaliação) e do motoqueiro (pedido a viagem), em 2 tamanhos e nos 2 temas, sem
+exceções nem transbordos, mas sem mapa real e sem o tipo de letra real. Durante
+isso, `confirmarSubida`/`concluir` deixaram de esperar pelo `cancel()` da
+subscrição, porque o `await` prendia o fluxo no teste.
+
+Por fazer/verificar: teste manual contra um projeto real (ainda não feito);
+teste manual no telemóvel das interfaces ROTA e das alterações de navegação
+(a instalação falhou — ver conversa); textos do cadastro revistos só por
+pesquisa de palavras.
+
+Plano para produção (7 fases, aprovado): 1 fundações, 2 cadastro para todos
+os veículos, 3 corridas reais com Realtime, 4 ecrãs em falta, 5 segurança e
+comunicação, 6 painel de administração, 7 acabamento.
+
+Fase 1 feita (Android): flavors `passageiro`/`motorista` com ids `mz.rota.*`
+e nomes por `manifestPlaceholders["nomeApp"]` (o `resValue` está desligado no
+AGP atual); namespace e `MainActivity` em `mz.rota`. `TipoAplicacao.sabor`
+liga cada ponto de entrada ao seu flavor. `AMBIENTE` (`dev`/`prod`) em
+`env/*.json` → `ConfiguracaoAmbiente`; em `prod` a app recusa arrancar sem
+Supabase. Assinatura de release por `android/key.properties` (modelo em
+`key.properties.exemplo`); sem ele, o release usa a chave de debug. iOS
+ainda com um único alvo (`com.example.projectx`): os esquemas por flavor
+precisam de um Mac. Ainda simulados mesmo em `prod` até à fase 3: corrida,
+pedidos, GPS, lugares, paragens, praças, capulana e voz.
 
 Passa a atualizar esta secção sempre que fechares uma secção da
 especificação — não esperes pelo fim do sprint.
+
+Ecrã principal do passageiro simplificado (pedido explícito): mapa em ecrã
+inteiro, botão ☰, pílula "Perto de…", botão de recentrar e uma folha em baixo
+com "Para onde vais?". Saíram a barra de separadores, o botão "Fala", o bloco
+das praças, os chips de paragens, o "Rede fraca? Pede por SMS" e a capulana.
+Perfil, viagens e paragens passaram para o menu lateral, como rotas
+empilhadas (`/conta/perfil`, `/conta/viagens`, `/conta/paragens`). O
+`redirect` só deixa passar rotas empilhadas com sessão iniciada — senão
+terminar sessão a partir do Perfil deixava o utilizador nesse ecrã.
+`terminarSessaoComConfirmacao` (em `aba_perfil.dart`) é partilhado pelo menu
+e pelo Perfil.
+
+Código por SMS ou WhatsApp (pedido explícito): `CanalCodigo` em
+`autenticacao/dominio/`. A escolha fica só no ecrã do código: "Entrar" no ecrã
+do número chama `continuarParaCodigo(telefone)`, que muda de fase **sem
+enviar**; o ecrã do código pergunta "Como queres receber o código?" e só então
+`enviarCodigo(canal)` envia e põe `EstadoAutenticacao.codigoEnviado` a `true`
+(a contagem de 60 s começa aí). Depois da contagem, "Reenviar por SMS" e
+"Reenviar por WhatsApp". No Supabase passa a
+`signInWithOtp(channel: OtpChannel.whatsapp)`; a confirmação continua com
+`OtpType.sms`. **O WhatsApp só funciona com o remetente de WhatsApp do Twilio
+configurado no painel do Supabase** — por fazer. No simulado, os dois canais
+aceitam `123456`.
+
+Pedido de viagem num só ecrã (pedido explícito): `EcraEscolherViagem` e a rota
+`/corrida/escolher` foram apagados; `FaseCorrida.semCorrida` resolve sempre
+para `/inicio`. A folha em baixo do mapa (`inicio/apresentacao/widgets/
+folha_pedido_viagem.dart`) mostra "Para onde vais?" e os três veículos; com
+destino, mostra a linha do destino (✕ limpa), preços por veículo, forma de
+pagamento, "Mais opções" (zona, carga, barco, nota) e "Pedir …". O mapa
+desenha a rota e enquadra-a. Com destino, o voltar do sistema limpa o destino.
+Sem faixa de capulana no ecrã principal. Nota: `EcraMapaInicio` e a folha
+importam `controladorCorridaProvider` de `corrida/apresentacao/` — já
+acontecia antes, mas contraria a regra de não importar de `apresentacao/` de
+outra funcionalidade; resolver se o controlador mudar de sítio.
+
+Veículos com fotografias reais (pedido explícito): `assets/veiculos/`
+(`mota.jpg`, `txopela.jpg`, `taxi.jpg`, 600×400, recortadas de fotos da
+Wikimedia Commons sob CC BY-SA 4.0). `pubspec.yaml` ganhou a secção `assets:`
+(sem dependências novas). `IlustracaoVeiculo` mostra a foto em 3:2 com cantos
+arredondados, e `tamanho` passou a ser a altura (por omissão 48, antes 56 de
+ícone). A camioneta continua com ícone. A licença obriga a mostrar os
+créditos: `nucleo/constantes/creditos_imagens.dart` + `EcraCreditosImagens`
+(`/conta/creditos-imagens`, no menu lateral). Ao trocar ou acrescentar fotos,
+atualizar essa lista.
+
+Uma só app (pedido explícito, substitui as duas apps da Fase 1):
+`TipoAplicacao`, `tipoAplicacaoProvider`, `main_passageiro.dart`,
+`main_motoqueiro.dart` e o flavor `motorista` foram removidos. Escolha de tipo
+em `/tipo` (ver regra 6). Migração `20261108000004_papel.sql` acrescenta
+`perfis.papel` — por aplicar no projeto Supabase. A instalação antiga
+"ROTA Motorista" (`mz.rota.motorista`) fica no telemóvel até ser desinstalada
+à mão.
+
+Cadastro do motorista por veículo (pedido explícito). Depois do código,
+`/tipo` mostra 4 opções diretas: Passageiro, Mototaxista, Txopelista,
+Taxista (as três últimas guardam `TipoUtilizador.motoqueiro` e põem o veículo
+em `EstadoCadastro.tipoVeiculo`). Cada tipo tem a sua rota de fase com um só
+formulário (`EcraCadastroMotorista(tipo:)`): `/cadastro/mota`,
+`/cadastro/txopela`, `/cadastro/taxi`. Todos: nome, email, cor, placa, foto
+do motorista, veículo de frente, de trás com a placa; txopela e táxi + carta
+de condução; táxi + marca e modelo (`documentosExigidos`, `exigeMarcaModelo`
+no domínio). As fotos ficam locais até "Enviar para aprovação", que faz
+`ControladorCadastro.enviarParaAprovacao`: guarda dados → veículo → envia
+fotos → submete, e pára no primeiro erro. `FaseCadastro` ficou
+`inicial/formulario/pendente/rejeitado/aprovado`; `/cadastro`
+(`EcraCadastroACarregar`) só aparece a quem volta sem tipo escolhido nesta
+sessão. Recuar do formulário volta à escolha
+(`ControladorAutenticacao.voltarAEscolherTipo`, e `cancelarEscolhaTipo`
+regressa onde estava). No menu do passageiro: "Trabalhar como motorista".
+Saíram BI, bairro, distrito, contacto de emergência, livrete, ano de fabrico,
+`distritos_inhambane.dart`, `IndicadorPasso` e os 3 ecrãs de passos. Migração
+`20261108000005_cadastro_por_veiculo.sql` — **não validada num Postgres, por
+aplicar**. A aprovação continua manual (painel do Supabase).
+
+GPS real e paragens (pedido explícito): `repositorioLocalizacaoProvider` passa
+a usar `RepositorioLocalizacaoGeolocator` (o simulado fica só como classe). O
+ecrã "Gravar paragem" tem a secção "Onde fica?": ao abrir pede a posição
+exata ao GPS e põe o pin lá ("A tua localização atual"); arrastar o mapa muda
+para "Ponto escolhido no mapa", com o botão "Usar a minha localização atual".
+Saiu a faixa de capulana desse ecrã. Preço mínimo: a mota nunca custa menos de
+50 MT — `RepositorioPrecosSimulado._precoMinimo` e migração
+`20261108000006_preco_minimo.sql` (`tarifas.preco_minimo`, `calcular_preco`
+com `greatest`) — **por aplicar no Supabase**. O login com Supabase está
+ligado (`env/dev.json`), com Twilio Verify; enquanto a conta Twilio for trial,
+os números de Moçambique não recebem SMS — usar os números de teste do
+Supabase. Sessão guardada: quem já entrou não pede código outra vez; o
+splash mostra "Tentar de novo" se a verificação falhar sem internet.
+
+Microfone real (pedido explícito; pacotes aprovados pelo utilizador:
+`speech_to_text`, `record`, `just_audio`; `RECORD_AUDIO` + `queries`
+RecognitionService no Android, `NSMicrophoneUsageDescription` e
+`NSSpeechRecognitionUsageDescription` no iOS). Em "Vais onde?" o microfone
+**dita o destino** (`ReconhecedorVoz` + `ControladorDitado`, pt_MZ → pt_PT →
+pt_BR): a frase passa por `extrairDestino` ("quero ir ao…" sai),
+`ControladorPesquisaDestino.pesquisarPorVoz` pesquisa já e, havendo
+resultado, o primeiro é escolhido e o ecrã principal mostra veículos e
+preços. A pesquisa simulada de lugares passou a ser palavra a palavra, sem
+acentos (`correspondencia_texto.dart`), com desempate pela distância. Em
+"Gravar paragem" o `PainelVoz` grava a sério (m4a em `Directory.systemTemp`)
+e tem "Ouvir"; saiu o aviso "Modo de teste" e o parâmetro `aoUsar`. A nota de
+voz do pedido de corrida (`ControladorCorrida.definirNotaVoz`) deixou de ser
+preenchida pela pesquisa. As notas de voz ainda não são enviadas para o
+Supabase (ficam no telemóvel).
+
+Destino no ecrã principal (pedido explícito): a folha tem uma caixa de texto
+real com o microfone dentro; ao escrever ou ditar, a folha mostra
+`ListaLugares`/`ResultadosPesquisa` (agora em
+`inicio/apresentacao/widgets/lista_destinos.dart`) e "Marcar no mapa"; ao
+escolher, mostra veículos e preços. `EcraPesquisaDestino` só continua a ser
+usado por `EcraEmViagem`. O ditado procura primeiro nos marcos e paragens
+conhecidos (`pesquisarPorVoz(conhecidos:)`), depois na lista de lugares.
+"Perto de: …" só aparece com um marco a menos de 3 km. Crédito do mapa sem o
+"flutter_map" ("© OpenStreetMap", obrigatório pela licença). O `PainelVoz` da
+paragem tem passos claros: gravar → parar → Ouvir / Gravar de novo / Apagar.
+
+Site público (pedido explícito; plano aprovado: página de apresentação em `/`
++ app Flutter web em `/app/`, alojados no Cloudflare Pages, publicados por
+GitHub Actions a cada push para `main`, mesmo Supabase que a app). Passo 1
+feito — a app compila para web (`flutter build web --base-href /app/`):
+`partilhado/widgets/imagem_local.dart` (`ImagemLocal`: `Image.network` no
+browser, onde o `image_picker` devolve `blob:`, e `Image.file` no telemóvel)
+substitui os `Image.file` do cadastro, da paragem e da capulana; o envio de
+fotos usa `XFile(caminho).readAsBytes()` + `uploadBinary`; o `GravadorVoz`
+grava Opus em memória no browser e toca por `setUrl`. Ícones e
+`web/index.html`/`manifest.json` com o nome e as cores da ROTA (ícones
+gerados: "R" amarelo sobre marinho — provisórios até haver logótipo).
+Passo 2 feito — `site/` é HTML estático sem dependências (`index.html`,
+`privacidade.html`, `404.html`, `estilo.css` com tema claro/escuro,
+`robots.txt`, `sitemap.xml`, `_headers`, `_redirects`). Tem cópias das fotos
+de `assets/veiculos/` em `site/imagens/veiculos/` (ao trocar fotos, trocar
+nos dois sítios e nos créditos do rodapé) e dos ícones de `web/`. Marcadores
+substituídos na publicação: `__ENDERECO_SITE__` (endereço público, sem `/`
+final) e `__CONTACTO__` (email da política de privacidade). A app usa
+endereços com `#`, por isso `/app/` não precisa de reescrita; `_headers`
+põe `/app/*` em `no-cache` para cada publicação chegar logo aos browsers.
+Passo 3 feito — `.github/workflows/publicar-site.yml`: a cada push para
+`main` (ou à mão), compila a app web com `AMBIENTE=prod` e as chaves do
+Supabase dos segredos do GitHub, junta `site/` + `build/web` em `dist/app`,
+substitui os marcadores e publica com `wrangler pages deploy` (cria o
+projeto na primeira vez). Segredos: `CLOUDFLARE_API_TOKEN`,
+`CLOUDFLARE_ACCOUNT_ID`, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`.
+Variáveis: `CONTACTO_EMAIL` (obrigatória), `CLOUDFLARE_PROJETO` (por
+omissão `rota`), `ENDERECO_SITE` (por omissão `https://<projeto>.pages.dev`).
+A versão do Flutter está fixada no workflow (3.44.6) — atualizar ao mudar a
+local. Verificado localmente (junção e `/app/` a abrir servida por HTTP);
+ainda não corrido no GitHub. A app web abre ao público já com corridas
+simuladas — decisão do utilizador.

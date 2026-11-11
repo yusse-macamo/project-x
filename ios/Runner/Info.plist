@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Project X</string>
+	<string>ROTA</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -70,6 +70,10 @@
 	<string>A câmara é usada para fotografar os documentos do seu cadastro de motoqueiro.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>A galeria é usada para escolher as fotografias dos documentos do seu cadastro de motoqueiro.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O microfone é usado para ditares o destino e gravares notas de voz sobre como chegar ao lugar.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>O reconhecimento de voz transforma em texto o destino que dizes, para o encontrar no mapa.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>A sua localização é usada para mostrar onde está no mapa, definir o ponto de recolha e calcular o preço da viagem.</string>
 </dict>

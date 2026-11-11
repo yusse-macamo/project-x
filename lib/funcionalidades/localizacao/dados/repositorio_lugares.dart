@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:project_x/funcionalidades/localizacao/dominio/coordenada.dart';
+import 'package:project_x/funcionalidades/localizacao/dominio/correspondencia_texto.dart';
 import 'package:project_x/funcionalidades/localizacao/dominio/excecoes.dart';
 import 'package:project_x/funcionalidades/localizacao/dominio/local.dart';
 
@@ -71,7 +72,7 @@ class RepositorioLugaresNominatim implements RepositorioLugares {
       );
       if (resposta.statusCode != 200) {
         throw const ExcecaoPesquisa(
-          'Não foi possível pesquisar agora. Tente de novo.',
+          'Não foi possível pesquisar agora. Tenta de novo.',
         );
       }
       final List<dynamic> dados = jsonDecode(resposta.body) as List<dynamic>;
@@ -83,7 +84,7 @@ class RepositorioLugaresNominatim implements RepositorioLugares {
     } on ExcecaoPesquisa {
       rethrow;
     } catch (_) {
-      throw const ExcecaoPesquisa('Sem ligação à internet. Tente de novo.');
+      throw const ExcecaoPesquisa('Sem ligação à internet. Tenta de novo.');
     }
   }
 
@@ -258,18 +259,32 @@ class RepositorioLugaresSimulado implements RepositorioLugares {
   @override
   Future<List<Local>> pesquisar(String termo, {Coordenada? perto}) async {
     await Future<void>.delayed(_atraso);
-    final String termoNormalizado = termo.trim().toLowerCase();
-    if (termoNormalizado.isEmpty) {
+    if (termo.trim().isEmpty) {
       return _locais.take(5).toList();
     }
-    return _locais
-        .where(
-          (Local local) =>
-              local.nome.toLowerCase().contains(termoNormalizado) ||
-              (local.descricao?.toLowerCase().contains(termoNormalizado) ??
-                  false),
-        )
-        .toList();
+    // Palavra a palavra: "mercado municipal" encontra os mercados, mesmo sem
+    // nenhum se chamar exatamente assim. Mais palavras em comum primeiro;
+    // em empate, o mais perto.
+    final List<(Local, int)> pontuados = <(Local, int)>[
+      for (final Local local in _locais)
+        (
+          local,
+          pontuarCorrespondencia(
+            termo,
+            '${local.nome} ${local.descricao ?? ''}',
+          ),
+        ),
+    ].where(((Local, int) par) => par.$2 > 0).toList();
+    pontuados.sort(((Local, int) a, (Local, int) b) {
+      final int porPontos = b.$2.compareTo(a.$2);
+      if (porPontos != 0 || perto == null) {
+        return porPontos;
+      }
+      return a.$1.coordenada
+          .distanciaEmMetrosAte(perto)
+          .compareTo(b.$1.coordenada.distanciaEmMetrosAte(perto));
+    });
+    return <Local>[for (final (Local, int) par in pontuados) par.$1];
   }
 
   @override

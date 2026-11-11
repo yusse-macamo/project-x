@@ -1,0 +1,12 @@
+# A app web não tem nomes de ficheiro com versão: o browser tem de confirmar
+# sempre se há versão nova, para o site atualizar logo a seguir a publicar.
+/app/*
+  Cache-Control: no-cache
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(self), microphone=(self), camera=(self)
+
+/imagens/*
+  Cache-Control: public, max-age=604800

@@ -5,6 +5,7 @@ import 'package:project_x/funcionalidades/autenticacao/apresentacao/controladore
 import 'package:project_x/nucleo/utilitarios/validadores.dart';
 import 'package:project_x/partilhado/widgets/botao_principal.dart';
 import 'package:project_x/partilhado/widgets/campo_texto.dart';
+import 'package:project_x/partilhado/widgets/dialogo_confirmacao.dart';
 
 class EcraCompletarPerfil extends ConsumerStatefulWidget {
   const EcraCompletarPerfil({super.key});
@@ -36,6 +37,21 @@ class _EcraCompletarPerfilState extends ConsumerState<EcraCompletarPerfil> {
         .guardarNome(_controlador.text.trim());
   }
 
+  Future<void> _mudarNumero() async {
+    final bool confirmado = await mostrarDialogoConfirmacao(
+      context,
+      titulo: 'Usar outro número?',
+      mensagem:
+          'Voltas ao ecrã do número. Para continuar com este número, vais '
+          'precisar de um novo código.',
+      rotuloConfirmar: 'Mudar o número',
+    );
+    if (!confirmado || !mounted) {
+      return;
+    }
+    await ref.read(controladorAutenticacaoProvider.notifier).terminarSessao();
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<EstadoAutenticacao>(controladorAutenticacaoProvider, (
@@ -57,42 +73,57 @@ class _EcraCompletarPerfilState extends ConsumerState<EcraCompletarPerfil> {
     final TextTheme textos = Theme.of(context).textTheme;
     final ColorScheme cores = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              Text(
-                'Como se chama?',
-                style: textos.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool saiu, Object? _) {
+        if (!saiu && !aProcessar) {
+          _mudarNumero();
+        }
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            tooltip: 'Mudar o número',
+            onPressed: aProcessar ? null : _mudarNumero,
+          ),
+        ),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Text(
+                  'COMO TE CHAMAS?',
+                  style: textos.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'O motoqueiro vê o seu nome para o encontrar no ponto de '
-                'recolha.',
-                style: textos.bodyMedium?.copyWith(
-                  color: cores.onSurfaceVariant,
+                const SizedBox(height: 8),
+                Text(
+                  'O motoqueiro vê o teu nome para te encontrar no ponto de '
+                  'recolha.',
+                  style: textos.bodyMedium?.copyWith(
+                    color: cores.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 32),
-              CampoTexto(
-                rotulo: 'Nome completo',
-                controlador: _controlador,
-                dica: 'Nome e apelido',
-                autoFoco: true,
-                aoMudar: _aoMudarNome,
-              ),
-              const SizedBox(height: 32),
-              BotaoPrincipal(
-                texto: 'Concluir',
-                aoPremir: _valido ? _concluir : null,
-                aCarregar: aProcessar,
-              ),
-            ],
+                const SizedBox(height: 32),
+                CampoTexto(
+                  rotulo: 'Nome completo',
+                  controlador: _controlador,
+                  dica: 'Nome e apelido',
+                  autoFoco: true,
+                  aoMudar: _aoMudarNome,
+                ),
+                const SizedBox(height: 32),
+                BotaoPrincipal(
+                  texto: 'Concluir',
+                  aoPremir: _valido ? _concluir : null,
+                  aCarregar: aProcessar,
+                ),
+              ],
+            ),
           ),
         ),
       ),

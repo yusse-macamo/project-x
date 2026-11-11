@@ -96,7 +96,13 @@ class _Conteudo extends StatelessWidget {
     final ColorScheme cores = Theme.of(context).colorScheme;
     final TextTheme textos = Theme.of(context).textTheme;
 
-    final (IconData icone, String titulo, String corpo, String acao, VoidCallback aoPremirAcao)
+    final (
+      IconData icone,
+      String titulo,
+      String corpo,
+      String acao,
+      VoidCallback aoPremirAcao,
+    )
     conteudo = switch (permissao) {
       EstadoPermissaoLocalizacao.negadaPermanente => (
         Icons.location_disabled,
@@ -109,7 +115,7 @@ class _Conteudo extends StatelessWidget {
       EstadoPermissaoLocalizacao.servicoDesligado => (
         Icons.gps_off,
         'GPS desligado',
-        'Ligue a localização no seu telemóvel para continuar',
+        'Liga a localização no teu telemóvel para continuar',
         'Ligar localização',
         aoAbrirDefinicoesLocalizacao,
       ),
@@ -117,8 +123,8 @@ class _Conteudo extends StatelessWidget {
       EstadoPermissaoLocalizacao.desconhecido ||
       EstadoPermissaoLocalizacao.concedida => (
         Icons.location_on_outlined,
-        'Precisamos da sua localização',
-        'Para lhe mostrar os mototaxistas mais próximos e calcular o '
+        'Precisamos da tua localização',
+        'Para te mostrar os motoqueiros mais próximos e calcular o '
             'preço até ao destino',
         'Permitir',
         aoPermitir,

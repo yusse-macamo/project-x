@@ -13,7 +13,7 @@ abstract final class Validadores {
   static String? validarTelefone(String? valor, {String? telefoneProprio}) {
     final String digitos = apenasDigitos(valor ?? '');
     if (digitos.isEmpty) {
-      return 'Introduza o número de telemóvel.';
+      return 'Introduzo número de telemóvel.';
     }
     if (digitos.length < 9) {
       return 'Número incompleto.';
@@ -21,9 +21,8 @@ abstract final class Validadores {
     if (digitos.length > 9 || !telefoneValido(digitos)) {
       return 'Número inválido.';
     }
-    if (telefoneProprio != null &&
-        digitos == apenasDigitos(telefoneProprio)) {
-      return 'Tem de ser diferente do seu número.';
+    if (telefoneProprio != null && digitos == apenasDigitos(telefoneProprio)) {
+      return 'Tem de ser diferente do teu número.';
     }
     return null;
   }
@@ -31,18 +30,18 @@ abstract final class Validadores {
   static String? validarNome(String? valor) {
     final String nome = valor?.trim() ?? '';
     if (nome.length < 3 || !nome.contains(' ')) {
-      return 'Introduza o nome completo.';
+      return 'Introduz o nome completo.';
     }
     return null;
   }
 
-  static String? validarNumeroBi(String? valor) {
+  static String? validarEmail(String? valor) {
     final String texto = valor?.trim() ?? '';
     if (texto.isEmpty) {
-      return 'Introduza o número do BI.';
+      return 'Introduz o teu email.';
     }
-    if (!RegExp(r'^\d{12}[A-Z]$').hasMatch(texto)) {
-      return 'Número de BI inválido.';
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]{2,}$').hasMatch(texto)) {
+      return 'Email inválido. Confirma se está escrito como nome@exemplo.com.';
     }
     return null;
   }
@@ -54,10 +53,10 @@ abstract final class Validadores {
   static String? validarMatricula(String? valor) {
     final String texto = normalizarMatricula(valor ?? '');
     if (texto.isEmpty) {
-      return 'Introduza a matrícula.';
+      return 'Introduz a placa.';
     }
     if (!RegExp(r'^[A-Z]{3} \d{3} [A-Z]{2}$').hasMatch(texto)) {
-      return 'Matrícula inválida.';
+      return 'Placa inválida. Usa o formato ABC 123 MP.';
     }
     return null;
   }

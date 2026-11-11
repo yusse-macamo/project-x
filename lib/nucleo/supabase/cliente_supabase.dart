@@ -28,28 +28,31 @@ String telefoneServidor(String telefoneLocal) =>
     '${Validadores.indicativo}${Validadores.apenasDigitos(telefoneLocal)}';
 
 const String _semLigacao =
-    'Sem ligação à internet. Verifique a ligação e tente de novo.';
+    'Sem ligação à internet. Verifica a ligação e tenta de novo.';
 
 /// Chaves de erro de negócio levantadas pelas funções em
 /// `supabase/migrations/20261031000002_funcoes.sql`.
 const Map<String, String> _errosNegocio = <String, String>{
   'coordenada_invalida':
-      'A localização escolhida não é válida. Escolha outro ponto no mapa.',
-  'sessao_invalida': 'A sua sessão terminou. Entre de novo com o seu número.',
+      'A localização escolhida não é válida. Escolhe outro ponto no mapa.',
+  'sessao_invalida': 'A tua sessão terminou. Entra de novo com o teu número.',
   'corrida_ativa_existente':
-      'Já tem uma corrida em curso. Termine-a ou cancele-a antes de pedir outra.',
+      'Já tens uma corrida em curso. Termina-a ou cancela-a antes de pedir outra.',
   'cadastro_inexistente':
-      'Não encontrámos o seu cadastro. Preencha os seus dados para continuar.',
-  'cadastro_ja_submetido': 'O seu cadastro já foi enviado e está em análise.',
+      'Não encontrámos o teu cadastro. Preenche os teus dados para continuar.',
+  'cadastro_ja_submetido': 'O teu cadastro já foi enviado e está em análise.',
+  'dados_pessoais_em_falta':
+      'Faltam o teu nome ou o teu email. Volta aos teus dados e completa-os.',
   'dados_veiculo_em_falta':
-      'Faltam dados da mota. Volte ao passo da mota e complete-os.',
-  'documentos_em_falta':
-      'Faltam documentos. Envie os quatro documentos antes de submeter.',
-  'motoqueiro_nao_aprovado': 'O seu cadastro ainda não foi aprovado.',
+      'Faltam dados do veículo. Volta ao passo do veículo e completa-os.',
+  'documentos_em_falta': 'Faltam fotografias. Envia todas antes de submeter.',
+  'tipo_veiculo_invalido':
+      'Este veículo não pode ser registado. Escolhe mota, txopela ou táxi.',
+  'motoqueiro_nao_aprovado': 'O teu cadastro ainda não foi aprovado.',
   'corrida_indisponivel': 'Esta corrida já não está disponível.',
   'transicao_invalida':
-      'Esta ação já não é possível nesta corrida. Atualize e tente de novo.',
-  'avaliacao_ja_feita': 'Já avaliou esta corrida.',
+      'Esta ação já não é possível nesta corrida. Atualiza e tenta de novo.',
+  'avaliacao_ja_feita': 'Já avaliaste esta corrida.',
 };
 
 /// Converte qualquer erro do Supabase numa mensagem para o utilizador.
@@ -79,13 +82,8 @@ String? _traduzirPostgrest(PostgrestException erro) {
     return negocio;
   }
   if (erro.code == '23505') {
-    if (erro.message.contains('numero_bi')) {
-      return 'Este número de BI já está registado noutra conta. '
-          'Confirme o número.';
-    }
     if (erro.message.contains('matricula')) {
-      return 'Esta matrícula já está registada noutra conta. '
-          'Confirme a matrícula.';
+      return 'Esta placa já está registada noutra conta. Confirma a placa.';
     }
   }
   return null;
@@ -95,18 +93,18 @@ String? _traduzirAuth(AuthException erro) {
   switch (erro.code) {
     case 'otp_expired':
     case 'invalid_credentials':
-      return 'Código incorreto ou expirado. Tente de novo ou peça um novo código.';
+      return 'Código incorreto ou expirado. Tenta de novo ou pede um novo código.';
     case 'over_sms_send_rate_limit':
     case 'over_request_rate_limit':
-      return 'Pediu demasiados códigos. Aguarde um minuto e tente de novo.';
+      return 'Pediste demasiados códigos. Aguarda um minuto e tenta de novo.';
     case 'sms_send_failed':
-      return 'Não foi possível enviar o SMS. Confirme o número e tente de novo.';
+      return 'Não foi possível enviar o SMS. Confirma o número e tenta de novo.';
     case 'phone_provider_disabled':
-      return 'O envio de códigos por SMS está desligado. Contacte o suporte.';
+      return 'O envio de códigos por SMS está desligado. Contacta o suporte.';
     case 'session_not_found':
     case 'session_expired':
     case 'refresh_token_not_found':
-      return 'A sua sessão terminou. Entre de novo com o seu número.';
+      return 'A tua sessão terminou. Entra de novo com o teu número.';
   }
   return null;
 }
@@ -114,10 +112,10 @@ String? _traduzirAuth(AuthException erro) {
 String? _traduzirStorage(StorageException erro) {
   final String mensagem = erro.message.toLowerCase();
   if (erro.statusCode == '413' || mensagem.contains('size')) {
-    return 'A imagem é demasiado grande. Escolha uma com menos de 5 MB.';
+    return 'A imagem é demasiado grande. Escolhe uma com menos de 5 MB.';
   }
   if (erro.statusCode == '415' || mensagem.contains('mime')) {
-    return 'Formato não suportado. Use uma fotografia em JPEG ou PNG.';
+    return 'Formato não suportado. Usa uma fotografia em JPEG ou PNG.';
   }
   return null;
 }

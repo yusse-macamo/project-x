@@ -4,14 +4,17 @@ class Utilizador {
   const Utilizador({
     required this.id,
     required this.telefone,
-    required this.tipo,
+    this.tipo,
     this.nome,
     this.urlFoto,
   });
 
   final String id;
   final String telefone;
-  final TipoUtilizador tipo;
+
+  /// `null` enquanto a pessoa não escolheu se usa a app como passageiro ou
+  /// como motorista. Pode mudar a qualquer momento pelo menu.
+  final TipoUtilizador? tipo;
   final String? nome;
   final String? urlFoto;
 

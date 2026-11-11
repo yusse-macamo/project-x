@@ -22,7 +22,7 @@ class BotaoPrincipal extends StatelessWidget {
       child: FilledButton(
         onPressed: aoPremir,
         child: _ConteudoBotao(
-          texto: texto,
+          texto: texto.toUpperCase(),
           aCarregar: aCarregar,
           icone: icone,
           corIndicador: cores.onPrimary,
@@ -57,7 +57,7 @@ class BotaoSecundario extends StatelessWidget {
           texto: texto,
           aCarregar: aCarregar,
           icone: icone,
-          corIndicador: cores.primary,
+          corIndicador: cores.onSurface,
         ),
       ),
     );
@@ -83,10 +83,7 @@ class _ConteudoBotao extends StatelessWidget {
       return SizedBox(
         height: 22,
         width: 22,
-        child: CircularProgressIndicator(
-          strokeWidth: 2.5,
-          color: corIndicador,
-        ),
+        child: CircularProgressIndicator(strokeWidth: 2.5, color: corIndicador),
       );
     }
     if (icone == null) {
@@ -94,11 +91,7 @@ class _ConteudoBotao extends StatelessWidget {
     }
     return Row(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icone),
-        const SizedBox(width: 8),
-        Text(texto),
-      ],
+      children: [Icon(icone), const SizedBox(width: 8), Text(texto)],
     );
   }
 }

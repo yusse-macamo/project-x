@@ -1,5 +1,7 @@
-import 'package:project_x/main_passageiro.dart' as passageiro;
+import 'package:flutter/material.dart';
+
+import 'package:project_x/arranque.dart';
 
 Future<void> main() async {
-  await passageiro.main();
+  runApp(await arrancarApp());
 }

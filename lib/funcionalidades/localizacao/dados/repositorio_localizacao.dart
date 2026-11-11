@@ -25,7 +25,8 @@ class RepositorioLocalizacaoGeolocator implements RepositorioLocalizacao {
     if (!servicoLigado) {
       return EstadoPermissaoLocalizacao.servicoDesligado;
     }
-    final geo.LocationPermission permissao = await geo.Geolocator.checkPermission();
+    final geo.LocationPermission permissao =
+        await geo.Geolocator.checkPermission();
     return _converterPermissao(permissao);
   }
 
@@ -77,15 +78,15 @@ class RepositorioLocalizacaoGeolocator implements RepositorioLocalizacao {
         );
       }
       throw const ExcecaoLocalizacao(
-        'Não foi possível obter a sua localização. Tente novamente.',
+        'Não foi possível obter a tua localização. Tenta de novo.',
       );
     } on geo.LocationServiceDisabledException {
       throw const ExcecaoLocalizacao(
-        'O GPS está desligado. Ligue a localização para continuar.',
+        'O GPS está desligado. Liga a localização para continuar.',
       );
     } catch (_) {
       throw const ExcecaoLocalizacao(
-        'Não foi possível obter a sua localização. Tente novamente.',
+        'Não foi possível obter a tua localização. Tenta de novo.',
       );
     }
   }
@@ -97,10 +98,8 @@ class RepositorioLocalizacaoGeolocator implements RepositorioLocalizacao {
       distanceFilter: _filtroDistanciaMetros,
     );
     return geo.Geolocator.getPositionStream(locationSettings: definicoes).map(
-      (geo.Position posicao) => Coordenada(
-        latitude: posicao.latitude,
-        longitude: posicao.longitude,
-      ),
+      (geo.Position posicao) =>
+          Coordenada(latitude: posicao.latitude, longitude: posicao.longitude),
     );
   }
 
@@ -151,7 +150,7 @@ class RepositorioLocalizacaoSimulado implements RepositorioLocalizacao {
     await Future<void>.delayed(_atraso);
     if (_estado != EstadoPermissaoLocalizacao.concedida) {
       throw const ExcecaoLocalizacao(
-        'Não foi possível obter a sua localização. Tente novamente.',
+        'Não foi possível obter a tua localização. Tenta de novo.',
       );
     }
     return _coordenadaFixa;
@@ -176,5 +175,5 @@ class RepositorioLocalizacaoSimulado implements RepositorioLocalizacao {
 
 final Provider<RepositorioLocalizacao> repositorioLocalizacaoProvider =
     Provider<RepositorioLocalizacao>(
-      (Ref ref) => RepositorioLocalizacaoSimulado(),
+      (Ref ref) => RepositorioLocalizacaoGeolocator(),
     );

@@ -22,6 +22,13 @@ class Coordenada {
     return _raioTerraMetros * c;
   }
 
+  Coordenada interpolarAte(Coordenada outra, double fracao) {
+    return Coordenada(
+      latitude: latitude + (outra.latitude - latitude) * fracao,
+      longitude: longitude + (outra.longitude - longitude) * fracao,
+    );
+  }
+
   @override
   bool operator ==(Object other) {
     return other is Coordenada &&

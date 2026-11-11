@@ -46,4 +46,4 @@ app.*.map.json
 
 # Credenciais do Supabase (ver env/dev.exemplo.json)
 /env/*.json
-!/env/dev.exemplo.json
+!/env/*.exemplo.json
