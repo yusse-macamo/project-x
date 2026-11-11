@@ -524,7 +524,7 @@ Uma só app (pedido explícito, substitui as duas apps da Fase 1):
 `TipoAplicacao`, `tipoAplicacaoProvider`, `main_passageiro.dart`,
 `main_motoqueiro.dart` e o flavor `motorista` foram removidos. Escolha de tipo
 em `/tipo` (ver regra 6). Migração `20261108000004_papel.sql` acrescenta
-`perfis.papel` — por aplicar no projeto Supabase. A instalação antiga
+`perfis.papel` — aplicada no projeto Supabase (11/11/2026). A instalação antiga
 "ROTA Motorista" (`mz.rota.motorista`) fica no telemóvel até ser desinstalada
 à mão.
 
@@ -546,8 +546,8 @@ sessão. Recuar do formulário volta à escolha
 regressa onde estava). No menu do passageiro: "Trabalhar como motorista".
 Saíram BI, bairro, distrito, contacto de emergência, livrete, ano de fabrico,
 `distritos_inhambane.dart`, `IndicadorPasso` e os 3 ecrãs de passos. Migração
-`20261108000005_cadastro_por_veiculo.sql` — **não validada num Postgres, por
-aplicar**. A aprovação continua manual (painel do Supabase).
+`20261108000005_cadastro_por_veiculo.sql` — validada num Postgres 16 +
+PostGIS local e aplicada no Supabase (11/11/2026). A aprovação continua manual (painel do Supabase).
 
 GPS real e paragens (pedido explícito): `repositorioLocalizacaoProvider` passa
 a usar `RepositorioLocalizacaoGeolocator` (o simulado fica só como classe). O
@@ -557,7 +557,7 @@ para "Ponto escolhido no mapa", com o botão "Usar a minha localização atual".
 Saiu a faixa de capulana desse ecrã. Preço mínimo: a mota nunca custa menos de
 50 MT — `RepositorioPrecosSimulado._precoMinimo` e migração
 `20261108000006_preco_minimo.sql` (`tarifas.preco_minimo`, `calcular_preco`
-com `greatest`) — **por aplicar no Supabase**. O login com Supabase está
+com `greatest`) — aplicada no Supabase (11/11/2026). O login com Supabase está
 ligado (`env/dev.json`), com Twilio Verify; enquanto a conta Twilio for trial,
 os números de Moçambique não recebem SMS — usar os números de teste do
 Supabase. Sessão guardada: quem já entrou não pede código outra vez; o
@@ -622,3 +622,13 @@ A versão do Flutter está fixada no workflow (3.44.6) — atualizar ao mudar a
 local. Verificado localmente (junção e `/app/` a abrir servida por HTTP);
 ainda não corrido no GitHub. A app web abre ao público já com corridas
 simuladas — decisão do utilizador.
+
+Migrações 4, 5 e 6 aplicadas no projeto Supabase em 11/11/2026, coladas
+no SQL Editor como um só script com `if not exists`, numa transação (não há
+acesso direto à base de dados nem histórico de migrações da CLI). Antes,
+validadas num Postgres 16 + PostGIS em Docker com imitações de `auth`/
+`storage`: a 000005 tinha `exigidos || 'carta_conducao'` sem `::text`, o
+que dava "malformed array literal" e impedia qualquer txopela ou táxi de
+submeter o cadastro — corrigido antes de aplicar. Testado: mota submete sem
+carta; txopela e táxi dão `documentos_em_falta` sem carta e submetem com
+ela; mota numa viagem de 300 m custa 50 MT.

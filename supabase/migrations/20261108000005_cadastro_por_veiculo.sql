@@ -54,7 +54,8 @@ begin
 
   exigidos := array['foto_motorista', 'veiculo_frente', 'veiculo_traseira'];
   if resultado.tipo_veiculo <> 'mota' then
-    exigidos := exigidos || 'carta_conducao';
+    -- Sem o ::text, o Postgres lê o literal como array e falha.
+    exigidos := exigidos || 'carta_conducao'::text;
   end if;
   if exists (
     select 1 from unnest(exigidos) as e(tipo)
